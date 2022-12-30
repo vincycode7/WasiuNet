@@ -3,5 +3,5 @@ A time series future asset price estimator, using multiple timeframe datapoint f
 
 Project currently in development in google colab, Follow link below to access.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/weiji14/deepbedmap/)
+[![Open In Colab](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
