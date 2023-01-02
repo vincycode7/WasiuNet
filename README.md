@@ -6,6 +6,7 @@ Project currently in development in google colab, Follow link below to access.
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
 Resources:
+
 (1) https://arxiv.org/pdf/1409.0473.pdf [NEURAL MACHINE TRANSLATION
 BY JOINTLY LEARNING TO ALIGN AND TRANSLATE] 
 
