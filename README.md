@@ -7,7 +7,7 @@ Project currently in development in google colab, Follow link below to access.
 
 Resources:
 
-(1) [NEURAL MACHINE TRANSLATION
+(1) [!NEURAL MACHINE TRANSLATION
 BY JOINTLY LEARNING TO ALIGN AND TRANSLATE] (https://arxiv.org/pdf/1409.0473.pdf)
 
 (2) https://arxiv.org/pdf/1706.03762.pdf [Attention is all you need paper]
