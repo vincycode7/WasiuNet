@@ -19,6 +19,10 @@ from collections import OrderedDict
 from torchinfo import summary
 
 np.seterr(divide = 'ignore') 
+
+
+import functools
+
 def wasiu_input_check(class_level):
     """
         param: classtype: this is the expected classes to check if input aligns 
@@ -169,7 +173,7 @@ class WasiuSpaceTime(nn.Module):
                                                          
         # Encode positions
         self.src_word_embedding = nn.Sequential(OrderedDict([
-                                  ('src_inp_norm_layer_1', nn.BatchNorm2d(in_channels)), # Source Create the normalization layer
+                                  ('src_inp_norm_layer_1', nn.LayerNorm(inp_feat)), # Source Create the normalization layer
                                   ('expand_HW',  nn.Flatten(start_dim=-2, end_dim=-1)),
                                   ('src_lin_embedding', nn.Linear(space_seq_len*inp_feat, expand_HW*expand_HW)), # Source Create the word embedding layer
                                   ('reshape_CHW', FCView(shape=(-1,in_channels, expand_HW, expand_HW))),
