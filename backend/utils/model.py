@@ -1,23 +1,87 @@
-#### TODOS
+import requests, json, time, sys, aiohttp, torch, functools
 
-# Todo: Convert the deep learning session to user the pytorch lighting (Done)
-# Process model output to calculate loss using mse and loss using crossentropy loss
+import numpy as np
+import pandas as pd
+import torch.nn as nn
+import torch.optim as optim
+import torch.utils.data as data
+import torch.nn.functional as F
 
- # from datetime import datetime
-import torch
-from torch.utils.data import Dataset
-from torch import nn
-from sklearn.model_selection import train_test_split
-import joblib
-import torch.multiprocessing as mp
-import pytorch_lightning as pl
+from datetime import datetime, timedelta
+from torch.utils.data import random_split
+from ast import Return
+from pytorch_lightning.utilities.model_summary import ModelSummary
+from torchmetrics.functional.classification import multiclass_f1_score, multiclass_accuracy, multiclass_precision, multiclass_recall
+from torch.utils.data import DataLoader
+from datetime import datetime
+from random import randint
+from collections import OrderedDict
+from torchinfo import summary
 
-# Your New Python File
-class BaseLSTMTrainer:
-    pass
+np.seterr(divide = 'ignore') 
+def wasiu_input_check(class_level):
+    """
+        param: classtype: this is the expected classes to check if input aligns 
+        with format, Values: ["wasiunet", "wasiuspace","wasiuspacetime"]
+    """
+    def checker_decorator(func):
+        
+        @functools.wraps(func)
+        def checker_function(*args, **kwargs):
+          src = kwargs.get('src',None)
+          trg = kwargs.get('trg',None)
 
-class BaseLSTMTester:
-    pass
+          if type(src) == type(None):
+            src = args[1]
+
+          # Check input type aligns with required input
+          if class_level in ["wasiunet","wasiuspacetime"]:
+            if type(trg) == type(None):
+              trg = args[2]
+            assert (
+                (torch.is_tensor(src) or isinstance(src, np.ndarray)) 
+                and 
+                (torch.is_tensor(trg) or isinstance(trg, np.ndarray)) 
+              ), f"src input of type {type(src)} or trg input of type {type(trg)} is not tensor or numpy, supported type for input is Pytorch tensor or numpy array."
+
+          else:
+            assert torch.is_tensor(src) or isinstance(src, np.ndarray), f"src input of type {type(src)} supported type for input is Pytorch tensor or numpy array."
+
+          # Convert src and trg to tensor
+          # src shape --> batch_size * time_seq_len * space_seq_len * feat_len e.g (2 * 12 * 60 * 7) or 
+          # time_seq_len * space_seq_len * feat_len e.g (12 * 60 * 7)
+          src = torch.Tensor(src)
+
+          if class_level in ["wasiunet","wasiuspacetime"]:
+            # trg shape -->  space_seq_len * batch_size * feat_len e.g (2 * 100 * 7)
+            trg = torch.Tensor(trg)
+          
+          if class_level in ["wasiunet"]:
+            # Write assertion to confirm input shapes
+            if src.ndim == 4:
+              pass
+            elif src.ndim == 3:
+              src = src.unsqueeze(0) # expand dimension
+            else:
+              raise ValueError(f"You have a dimension error in your source input of {src.ndim}, expected dimension is {4} or {3}")
+
+            # Write assertion to confirm output shapes
+            if trg.ndim == 3:
+              pass
+            elif trg.ndim == 2:
+              trg = trg.unsqueeze(0) # expand dimension
+            else:
+              raise ValueError(f"You have a dimension error in your source input of {src.ndim}, expected dimension is {4} or {3}")
+
+          # assert src and trg have the same batch size
+          if class_level in ["wasiunet","wasiuspacetime"]:
+            assert src.shape[0] == trg.shape[0], f"source batch {src.shape[1]} and target batch {trg.shape[0]} do not have the same batch size"
+            return func(src=src, trg=trg)
+          else:
+            return func(src=src)
+        
+        return checker_function
+    return checker_decorator
 
 class FCView(nn.Module):
     def __init__(self,shape=None):
@@ -33,304 +97,239 @@ class FCView(nn.Module):
         x = x.view(self.shape) if self.shape != -1 else x.view(n_b, -1)
         return x
 
-class Lin_View(nn.Module):
-    def __init__(self,shape=None):
-        super(Lin_View, self).__init__()
-        if shape != None:
-            self.shape = shape 
-        else:
-            self.shape = -1
-    def forward(self, x):
-        return x.view(x.size()[0], self.shape) if self.shape != -1 else x.view(x.size()[0], -1)
-
-class EnsembleLstm(nn.Module):
-  def __init__(self, input_size, hidden_size, num_layers, batch_first=True, dropout=0.3, bidirectional=False, level_1_n_ensemble_lstm=7):
-    super(EnsembleLstm, self).__init__()
-    self.level_1_n_ensemble_lstm = level_1_n_ensemble_lstm
-    self.input_size = input_size
-    self.hidden_size = hidden_size
-    self.num_layers = num_layers
-    self.batch_first = batch_first
-    self.dropout = dropout
-    self.bidirectional=bidirectional
-    self.learner = nn.ModuleList([
-        # nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=True)
-        nn.LSTM(self.input_size, self.hidden_size, self.num_layers, batch_first=self.batch_first,dropout=self.dropout, bidirectional=self.bidirectional)
-
-        for _ in range(level_1_n_ensemble_lstm)])
+class WasiuSpace(nn.Module):
+      """
+        This class provides the functionality to process assets at a space level, 
+        by space level this means for example we are processing a 60 sequences of 
+        1 min timeframe asset data or processing a 60 sequences of 5mins timeframe
+        asset data. So basically we embed positions on space level and feed to 
+        the transformer model.
         
-  def get_output_channel(self):
-    if self.bidirectional:
-      return self.hidden_size * 2
-    else:
-      self.hidden_size
-      
-  def forward(self,x):
-    # print(self.input_size, self.hidden_size, self.num_layers)
-    # bi_value = 2 if self.bidirectional else 1
-    # self.learner_state_h = torch.randn(self.level_1_n_ensemble_lstm, bi_value*self.num_layers,x.size(0),  self.hidden_size, requires_grad=True)
-    # self.learner_state_c = torch.randn(self.level_1_n_ensemble_lstm, bi_value*self.num_layers,x.size(0),  self.hidden_size, requires_grad=True)
-    level_output = []
-    for rank in range(self.level_1_n_ensemble_lstm):
-        # output, (learner_state_hn_, learner_state_cn_) = self.learner[rank](x[:,rank,:,:],(self.learner_state_h[rank], self.learner_state_c[rank])) # Training for each model
-        output, (learner_state_hn_, learner_state_cn_) = self.learner[rank](x[:,rank,:,:]) # Training for each model
+        :param: d_model: a singular Cryptocurrency ticker. (str)
+        :param: src_vocab_size: the price data frequency in seconds, one of: 60, 300, 900, 3600, 21600, 86400. (int)
+        :param: trg_vocab_size: a date string in the format YYYY-MM-DD-HH-MM. (str)
+        :param: src_pad_idx: a date string in the format YYYY-MM-DD-HH-MM,  Default=Now. (str)
+        :param: num_heads: printing during extraction, Default=True. (bool)
+        :param: num_encoder_layers: a Pandas DataFrame which contains requested cryptocurrency data. (pd.DataFrame)
+        :param: forward_expansion: a date string in the format YYYY-MM-DD-HH-MM,  Default=Now. (str)
+        :param: dropout: printing during extraction, Default=True. (bool)
+        :param: max_len: a Pandas DataFrame which contains requested cryptocurrency data. (pd.DataFrame)
+        :param: device: a Pandas DataFrame which contains requested cryptocurrency data. (pd.DataFrame)
+      """
+      def __init__(self, d_model, nhead, num_encoder_layers, dim_feedforward, 
+                dropout, max_len, device,trans_activation,
+                 trans_norm_first,trans_batch_first
+                ):
+        super(WasiuSpace, self).__init__()
+        self.device = device
+        self.max_len = max_len
 
-        level_output.append(output)
-    return torch.stack(level_output).permute(1,0,2,3)
-
-class MetaCNN(nn.Module):
-  def __init__(self, input_size=7, input_feature=30, output_size=512, dropout=0.1):
-    super(MetaCNN, self).__init__()
-    self.input_size = input_size
-    self.input_feature = input_feature
-    self.output_size = output_size
-    self.dropout = dropout
-    self.learner = nn.Sequential(OrderedDict([
-          ('batch_norm1', nn.BatchNorm2d(input_size)),
-          ('relu1', nn.ReLU()),
-          ('dropout1', nn.Dropout(self.dropout)),
-          ('conv2d_1', nn.Conv2d(input_size, input_feature*4, (1,3), stride=1, padding=(0,1))),
-          
-          ('batch_norm2', nn.BatchNorm2d(input_feature*4)),
-          ('relu2', nn.ReLU()),
-          ('dropout2', nn.Dropout(self.dropout/1.2)),
-          ('conv2d_2', nn.Conv2d(input_feature*4, int(input_feature*7), (1,3), stride=1, padding=(0,1))),
-          
-          ('batch_norm3', nn.BatchNorm2d(int(input_feature*7))),
-          ('relu3', nn.ReLU()),
-          ('dropout3', nn.Dropout(self.dropout/2)),
-          ('conv2d_3', nn.Conv2d(int(input_feature*7),int((input_feature*2)/3), (3, 5), stride=(1, 1), padding=(1, 2))),
-          
-          ('batch_norm4', nn.BatchNorm2d(int((input_feature*2)/3))),
-          ('relu4', nn.ReLU()),
-          ('dropout4', nn.Dropout(self.dropout/2.1)),
-          ('conv2d_4', nn.Conv2d(int((input_feature*2)/3),int(input_feature/2), (3, 5), stride=(1, 1), padding=(1, 2))),
-
-          ('batch_norm5', nn.BatchNorm2d(int(input_feature/2))),
-          ('relu5', nn.ReLU()),  
-          ('dropout5', nn.Dropout(self.dropout/2.5)),     
-          ('conv2d_5', nn.Conv2d(int(input_feature/2),self.input_size, (3, 5), stride=(1, 1), padding=(1, 2))),
-
-        ]))
-
-  def forward(self, x):
-    return self.learner(x)
-
-class MetaLinear(nn.Module):
-  def __init__(self, input_size=107520, output_size=10, dropout=0.5):
-    super(MetaLinear, self).__init__()
-    self.learner = nn.Sequential(nn.Sequential(OrderedDict([
-          ('flat_1', nn.Flatten()),
-          ('relu1', nn.ReLU()),
-          ('drop1',nn.Dropout(dropout)),
-          ('lin_1',nn.Linear(input_size,output_size)),
-          ('view', FCView(shape=(-1,output_size)))
-        ])))
-  def forward(self,x):
-    return self.learner(x)
-    
-
-class DeepEnsembleLstmCnn(pl.LightningModule):
-    def __init__(self,feat_map_dict, input_feature_size=5,sequence_length=30,level_1_n_ensemble_lstm=7,output=8):
-        super(DeepEnsembleLstmCnn, self).__init__()
-        self.save_hyperparameters()
-        self.example_input_array = torch.Tensor(2, level_1_n_ensemble_lstm, sequence_length, input_feature_size)
-        # self.N = batch # batch
-        self.feat_map_dict = feat_map_dict
-        self.target_feature = []
-        self.direction_feature = []
-        for key, value in self.feat_map_dict.items():
-          if key in [ 'direction_-1_conf','direction_0_conf','direction_1_conf']:
-            self.direction_feature.append(value)
-          else:
-            self.target_feature.append(value)
-            
-        self.L = sequence_length # seq length
-        self.H_in = input_feature_size # input size
-
-        # N - 1 * H_in - 7 * L - 5 (1 * 60 * 5)
-        self.queue = []
-        self.input_size = input_feature_size
-        self.sequence_length = sequence_length
-        # self.hidden_size = hidden_size
-        # self.num_layers = num_layers
-        self.output = output
-        self.level_1_n_ensemble_lstm = level_1_n_ensemble_lstm
-
-
-        # 1(batch_size) * 7(time_frames - view in diff time frames) * 60(time_steps - for diff time step) * 5(features - for these features)
-        # First level embedding
-        self.ensemble_lstm_base_learner = EnsembleLstm(input_size=self.input_size, hidden_size=self.input_size, num_layers=2, batch_first=True, dropout=0.50, bidirectional=False,level_1_n_ensemble_lstm=self.level_1_n_ensemble_lstm)
-        self.ensemble_bi_lstm_meta_learner = EnsembleLstm(input_size=self.input_size, hidden_size=self.input_size*2, num_layers=2, batch_first=True, dropout=0.45, bidirectional=True,level_1_n_ensemble_lstm=self.level_1_n_ensemble_lstm)
-
-        self.ensemble_cnn_meta_learner = MetaCNN(input_size=self.level_1_n_ensemble_lstm, input_feature=self.sequence_length, output_size=self.ensemble_bi_lstm_meta_learner.get_output_channel(), dropout=0.45)
-        self.ensemble_bi_lstm_meta_learner_2 = EnsembleLstm(input_size=self.input_size, hidden_size=self.input_size*2, num_layers=3, batch_first=True, dropout=0.35, bidirectional=True,level_1_n_ensemble_lstm=self.level_1_n_ensemble_lstm)
-
-        self.ensemble_deep_lstm_last_learner = EnsembleLstm(input_size=self.ensemble_bi_lstm_meta_learner.get_output_channel(), hidden_size=self.ensemble_bi_lstm_meta_learner.get_output_channel(), num_layers=10, batch_first=True, dropout=0.30, bidirectional=False,level_1_n_ensemble_lstm=self.level_1_n_ensemble_lstm)
-        self.final_output_layer = MetaLinear(input_size=self.level_1_n_ensemble_lstm*self.sequence_length*self.ensemble_bi_lstm_meta_learner.get_output_channel(), output_size=self.output, dropout=0.20)
-
-    def forward(self,x):
-        if not isinstance(x, torch.Tensor):
-          x = torch.tensor(x).float()
-        else:
-          x = x.float()
-        if x.ndim == 3:
-          x = x.unsqueeze(0)
-        if x.ndim > 4:
-          x = x.view([-1]+list(x.shape[-3:]))
-          
-          
-        # Vanilla Lstm
-        level_one_output = self.ensemble_lstm_base_learner(x)
-        level_one_output = level_one_output + x # Skip connection 1 
+        # space model
+        self.wasiuspace_encoder_layer = nn.TransformerEncoderLayer(
+                                                        d_model=d_model, nhead=nhead, 
+                                                        dim_feedforward=dim_feedforward, 
+                                                        dropout=dropout,activation=trans_activation,
+                                                        batch_first=trans_batch_first,
+                                                        norm_first=trans_norm_first
+                                                        )
         
-        # Bi Directional Lstm with skip connection
-        level_two_lstm_output  = self.ensemble_bi_lstm_meta_learner(level_one_output)
+        self.wasiuspace_transformer_encoder = nn.TransformerEncoder(
+                                                          encoder_layer=self.wasiuspace_encoder_layer, 
+                                                        num_layers=num_encoder_layers
+                                                        )
+      @wasiu_input_check('wasiuspace')
+      def wasiuspace_input_check(src):
+          return src
 
-        # Parse level two with CNN
-        level_two_cnn_output = self.ensemble_cnn_meta_learner(level_one_output[:,:,:,:])
-        level_two_cnn_output = level_one_output + level_two_cnn_output # Skip connection 2
+      def forward(self, src):
+        # src shape: (src_seq_length, batch_size, time_seq_length, embed_size)
+        # trg shape: (trg_seq_length, batch_size)
+        src = self.wasiuspace_input_check(src)
+        return self.wasiuspace_transformer_encoder(src)
 
-        # Bi Directional Lstm with skip connection 2
-        level_two_lstm_output_2  = self.ensemble_bi_lstm_meta_learner_2(level_two_cnn_output)
+class WasiuSpaceTime(nn.Module):
+      """
+        This class provides the functionality to process assets at a time level, 
+        by time level this means for example we are processing a 60 sequences of 
+        1 min timeframe asset data on one end and processing a 60 sequences of 5mins timeframe
+        asset data on the other end to both return the next lowest timeframe series into
+        the future. So basically we embed positions to time level and we feed it to 
+        the space transformer model.
+      """
 
-        new_level_two_input = level_two_lstm_output + level_two_lstm_output_2 # Skip connection 3
-        # del level_two_lstm_output, level_two_cnn_output, level_two_lstm_output_2
+      def __init__(self, embedding_dim,inp_feat, out_feat, in_channels, patch_size,space_seq_len, 
+                   expand_HW, nhead, num_encoder_layers, num_decoder_layers, 
+                  dim_feedforward, dropout, max_len, device,trans_activation,
+                 trans_norm_first,trans_batch_first
+                  ):
+        super(WasiuSpaceTime, self).__init__()
 
-        # Deep Lstm with skip connection
-        last_level_output = self.ensemble_deep_lstm_last_learner(new_level_two_input)
-        # del new_level_two_input
+        self.device = device
+        self.max_len = max_len
+                                                         
+        # Encode positions
+        self.src_word_embedding = nn.Sequential(OrderedDict([
+                                  ('src_inp_norm_layer_1', nn.BatchNorm2d(in_channels)), # Source Create the normalization layer
+                                  ('expand_HW',  nn.Flatten(start_dim=-2, end_dim=-1)),
+                                  ('src_lin_embedding', nn.Linear(space_seq_len*inp_feat, expand_HW*expand_HW)), # Source Create the word embedding layer
+                                  ('reshape_CHW', FCView(shape=(-1,in_channels, expand_HW, expand_HW))),
+                                  ('src_patcher_layer', nn.Conv2d(
+                                          in_channels = in_channels,
+                                          out_channels = embedding_dim,
+                                          kernel_size=patch_size,
+                                          stride = patch_size,
+                                          padding = 0
+                                          )), # Input patcher
+                                  ('flatten', nn.Flatten(start_dim=2, end_dim=3)),
+                                ]))
+
+
+
         
-        last_level_output = self.final_output_layer(last_level_output)
-        return last_level_output
+        # Source Create the word position embedding layer
+        self.src_position_embeddding = nn.Embedding(max_len, embedding_dim)
 
-    def configure_optimizers(self):
-        # optimizer = torch.optim.LBFGS(self.parameters(), lr=0.1, momentum=0.9)
-        # optimizer = torch.optim.SGD(self.parameters(), lr=0.001, momentum=0.9)
-        optimizer = torch.optim.Adam(self.parameters(), lr=0.1)
-        return optimizer
-
-    def training_step(self, batch, batch_idx):
-        # training_step defines the train loop.
-        x, y = batch
-        if not isinstance(y, torch.Tensor):
-          y = torch.tensor(y).float()
-        else:
-          y = y.float()
-        y = y.view([-1]+list(y.shape[-1:]))
-        y_hat = self(x)
- 
-        loss = F.mse_loss(y_hat[:,self.target_feature], y[:,self.target_feature]) + F.cross_entropy(y_hat[:,self.direction_feature]   ,y[:,self.direction_feature])
-        pred_class_hat = torch.softmax(y_hat[:,self.direction_feature], dim=1).argmax(dim=1)
-        pred_class_true = y[:,self.direction_feature].argmax(dim=1)
+        # Target Create the word embedding layer
+        self.trg_word_embedding = nn.Sequential(OrderedDict([
+                                  ('trg_lin_embedding', nn.Linear(out_feat, embedding_dim)),
+                                  ('dropout', nn.Dropout(dropout))
+                                ]))
         
-        acc = multiclass_accuracy(pred_class_hat, pred_class_true, num_classes=3)
-        f1_score = multiclass_f1_score(pred_class_hat, pred_class_true, num_classes=3)
-        pre = multiclass_precision(pred_class_hat, pred_class_true, num_classes=3)
-        recall = multiclass_recall(pred_class_hat, pred_class_true, num_classes=3)
-        # print(f"pred_class_hat: {pred_class_hat}")
-        # print(f"pred_class_true: {pred_class_true}")
-        # self.log("train_loss", loss)
-        # datetime object containing current date and time
-        # curr_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-        # self.log("train_curr_time", curr_time)
-        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_f1_score", f1_score, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_pre", pre, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("train_recall", recall, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return dict(
-            loss=loss,
-            log=dict(
-                train_loss=loss,
-                train_acc=acc,
-                train_f1_score=f1_score,
-                train_pre=pre,
-                train_recall=recall
-            )
-        )
-        # return loss
 
-    def test_step(self, batch, batch_idx):
-        # this is the test loop
-        x, y = batch
-        if not isinstance(y, torch.Tensor):
-          y = torch.tensor(y).float()
-        else:
-          y = y.float()
-        y = y.view([-1]+list(y.shape[-1:]))
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat[:,self.target_feature], y[:,self.target_feature]) + F.cross_entropy(y_hat[:,self.direction_feature]   ,y[:,self.direction_feature])
-        pred_class_hat = torch.softmax(y_hat[:,self.direction_feature], dim=1).argmax(dim=1)
-        pred_class_true = y[:,self.direction_feature].argmax(dim=1)
+        # Target Create the word position embedding layer
+        self.trg_position_embedding = nn.Embedding(max_len, embedding_dim)
 
-        acc = multiclass_accuracy(pred_class_hat, pred_class_true, num_classes=3)
-        f1_score = multiclass_f1_score(pred_class_hat, pred_class_true, num_classes=3)
-        pre = multiclass_precision(pred_class_hat, pred_class_true, num_classes=3)
-        recall = multiclass_recall(pred_class_hat, pred_class_true, num_classes=3)
+        # space-time model
+        self.wasiuspace_encoder = WasiuSpace(d_model=embedding_dim, nhead=nhead, 
+                                            num_encoder_layers=num_encoder_layers, 
+                                            dim_feedforward=dim_feedforward,
+                                            dropout=dropout, max_len=max_len, 
+                                            device=device,trans_activation=trans_activation,
+                                                        trans_batch_first=trans_batch_first,
+                                                        trans_norm_first=trans_norm_first
+                                          )
+        
+        # space-time model
+        self.wasiuspacetime_decoder_layer = nn.TransformerDecoderLayer(
+                                                        d_model=embedding_dim, nhead=nhead, 
+                                                        dim_feedforward=dim_feedforward, 
+                                                        dropout=dropout,activation=trans_activation,
+                                                        batch_first=trans_batch_first,
+                                                        norm_first=trans_norm_first
+                                                        )
+        
+        self.wasiuspacetime_transformer_decoder = nn.TransformerDecoder(
+                                                          decoder_layer=self.wasiuspacetime_decoder_layer, 
+                                                       num_layers=num_decoder_layers)
+        
+        self.dropout = nn.Dropout(dropout)
 
-        # self.log("train_loss", loss)
-        # datetime object containing current date and time
-        # curr_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-        # self.log("train_curr_time", curr_time)
-        self.log("test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("test_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("test_f1_score", f1_score, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("test_pre", pre, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("test_recall", recall, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return dict(
-            loss=loss,
-            log=dict(
-                test_loss=loss,
-                test_acc=acc,
-                test_f1_score=f1_score,
-                test_pre=pre,
-                test_recall=recall
-            )
+      @wasiu_input_check('wasiuspacetime')
+      def wasiuspacetime_input_check(src, trg):
+          return src, trg
+
+      def forward(self, src, trg):
+        """
+          :param: src: source asset data in the format 
+            time_seq_len * batch_size * space_seq_len * feat_len 
+            e.g (2 * 12 * 60 * 7) or (1 * 12 * 60 * 7).
+            (Tensor)
+
+          :param: trg: target asset data in the format 
+            space_seq_len * batch_size * feat_len e.g (100 * 2 * 7) or (100 * 1 * 7)
+            (Tensor)
+        """
+        src, trg =  self.wasiuspacetime_input_check(src, trg)
+        src = self.src_word_embedding(src).permute(0,2,1) # embed and reshape
+        
+        # Get src and trg shapes
+        batch_size, src_seq_length, _ = src.shape
+        _, trg_seq_length, _ = trg.shape
+        
+        # Create Positions
+        src_position = (
+            torch.arange(0, src_seq_length).unsqueeze(0).expand(batch_size, src_seq_length)
+            .to(self.device)
         )
 
-    def validation_step(self, batch, batch_idx):
-        # this is the validation loop
-        x, y = batch
-        if not isinstance(y, torch.Tensor):
-          y = torch.tensor(y).float()
-        else:
-          y = y.float()
-        y = y.view([-1]+list(y.shape[-1:]))
-        y_hat = self(x)
-        loss = F.mse_loss(y_hat[:,self.target_feature], y[:,self.target_feature]) + F.cross_entropy(y_hat[:,self.direction_feature]   ,y[:,self.direction_feature])
-        pred_class_hat = torch.softmax(y_hat[:,self.direction_feature], dim=1).argmax(dim=1)
-        pred_class_true = y[:,self.direction_feature].argmax(dim=1)
-        
-        acc = multiclass_accuracy(pred_class_hat, pred_class_true, num_classes=3)
-        f1_score = multiclass_f1_score(pred_class_hat, pred_class_true, num_classes=3)
-        pre = multiclass_precision(pred_class_hat, pred_class_true, num_classes=3)
-        recall = multiclass_recall(pred_class_hat, pred_class_true, num_classes=3)
-        # print(f"pred_class_hat: {pred_class_hat}")
-        # print(f"pred_class_true: {pred_class_true}")
-        # self.log("train_loss", loss)
-        # datetime object containing current date and time
-        # curr_time = datetime.now().strftime("%m/%d/%Y, %H:%M:%S")
-        # self.log("train_curr_time", curr_time)
-        self.log("val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("val_acc", acc, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("val_f1_score", f1_score, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("val_pre", pre, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        self.log("val_recall", recall, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return dict(
-            loss=loss,
-            log=dict(
-                val_loss=loss,
-                val_acc=acc,
-                val_f1_score=f1_score,
-                val_pre=pre,
-                val_recall=recall
-            )
+        trg_position = (
+            torch.arange(0, trg_seq_length).unsqueeze(0).expand(batch_size, trg_seq_length)
+            .to(self.device)
         )
 
-    def predict_step(self, batch, batch_idx, dataloader_idx=0):
-        x, y = batch
-        y_hat = self(x)
-        return y_hat
+        # Embed positions into data
+        embed_src = self.dropout(
+            (src + self.src_position_embeddding(src_position))
+        )
+        del src
 
-    
+        embed_trg = self.dropout(
+            (self.trg_word_embedding(trg) + self.trg_position_embedding(trg_position)) 
+        )
+        trg_mask = nn.Transformer.generate_square_subsequent_mask(trg_seq_length).to(
+            self.device
+        )
+
+        encoded_src_memory = self.wasiuspace_encoder(embed_src)
+        del embed_src
+
+        out = self.wasiuspacetime_transformer_decoder(embed_trg,encoded_src_memory,tgt_mask=trg_mask)
+        del embed_trg, encoded_src_memory
+        return out
+
+class WasiuNet(nn.Module):
+    def __init__(self, embedding_dim, inp_feat, out_feat, in_channels, patch_size, space_seq_len,
+                 expand_HW,src_pad_idx, nhead, num_encoder_layers, num_decoder_layers, 
+                 dim_feedforward, dropout, max_len, device,trans_activation,
+                 trans_norm_first,trans_batch_first
+                  ):
+        super(WasiuNet, self).__init__()
+        # super(Transformer, self).__init__()
+        # self.src_word_embedding = nn.Embedding(src_vocab_size, embedding_size)
+        # self.src_position_embeddding = nn.Embedding(max_len, embedding_size)
+        # self.trg_word_embedding = nn.Embedding(trg_vocab_size, embedding_size)
+        # self.trg_position_embedding = nn.Embedding(max_len, embedding_size)
+        self.device = device
+
+        self.wasiuspacetime = WasiuSpaceTime(embedding_dim=embedding_dim, inp_feat=inp_feat, 
+                                             out_feat=out_feat, in_channels=in_channels, 
+                                             patch_size=patch_size, space_seq_len=space_seq_len, expand_HW=expand_HW,
+                                             nhead=nhead, num_encoder_layers=num_encoder_layers, 
+                                              num_decoder_layers=num_decoder_layers,
+                                              dim_feedforward=dim_feedforward,
+                                              dropout=dropout, max_len=max_len, 
+                                              device=device,trans_activation=trans_activation,
+                                              trans_batch_first=trans_batch_first,
+                                              trans_norm_first=trans_norm_first
+                                          )
+        # Target Create the word embedding layer
+        self.fc_out = nn.Sequential(OrderedDict([
+                                  ('dropout', nn.Dropout(dropout)),  
+                                  ('decoded_out', nn.Linear(embedding_dim, out_feat))
+                                  
+                                ]))
+        
+        self.dropout = nn.Dropout(dropout)
+
+    @wasiu_input_check('wasiunet')
+    def check_wasiunet_input(src, trg):
+        return src, trg
+
+    def forward(self, src, trg, future=0):        
+        """
+          :param: src: source asset data in the format 
+            time_seq_len * batch_size * space_seq_len * feat_len 
+            e.g (2 * 12 * 60 * 7).
+            or time_seq_len * space_seq_len * feat_len e.g (60 * 12 * 7)
+            (Numpy | Tensor)
+
+          :param: trg: target asset data in the format 
+            space_seq_len * batch_size * feat_len e.g (100 * 2 * 7)
+            or time_seq_len * feat_len e.g (100 * 7)
+            (Numpy | Tensor)
+        """
+        src, trg = self.check_wasiunet_input(src, trg)
+        out = self.wasiuspacetime(src, trg)
+        del src, trg
+        out = self.fc_out(out)
+        return out
