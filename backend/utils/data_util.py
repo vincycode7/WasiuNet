@@ -383,6 +383,18 @@ import ta
 import asyncio
 import time
 
+## Import required libraries
+from datetime import datetime
+from torch.utils.data import Dataset
+# from Historic_Crypto import HistoricalData
+from collections import OrderedDict
+import pandas as pd
+import numpy as np
+import torch as tch
+import ta
+import asyncio
+import time
+
 class DatasetBaseBackend(Dataset):
   def __init__(self, asset, resolution, start_date, end_date,glob_time_step_forwards=7,glob_time_step_backwards=None, fea_output_per_data_slice=30, fea_data_slice=7, technical_analysis_config=None,**kwarg):
     """
@@ -788,20 +800,20 @@ class DatasetBaseBackend(Dataset):
     return all_inputs
 
   def get_single_slice_forward_output(self, Y, current_level_index):
-    single_output = self.expand_dset_to_time(data=Y, idx=current_level_index, outs=self.glob_time_step_forwards, steps=1,forward=1,include_current_idx=0)
+    single_output = self.expand_dset_to_time(data=Y, idx=current_level_index, outs=1, steps=self.glob_time_step_forwards,forward=1,include_current_idx=0)
     return single_output
 
-  def get_packed_forward_target(self, Y,current_level_index, to_numpy=True):
+  def get_multi_slice_forward_output(self, Y,current_level_index, to_numpy=True):
     # if to_numpy:
     #   single_output = self.expand_dset_to_time(data=Y, idx=current_level_index, outs=1, steps=self.glob_time_step_forwards,forward=1,include_current_idx=0).to_numpy()
     # else:
-    single_output = self.expand_dset_to_time(data=Y, idx=current_level_index, outs=1, steps=self.glob_time_step_forwards,forward=1,include_current_idx=0)
+    single_output = self.expand_dset_to_time(data=Y, idx=current_level_index, outs=self.glob_time_step_forwards, steps=1,forward=1,include_current_idx=1)
     return single_output
 
   def retry_func(self, curr_val):
     return ((curr_val+self.normal_step)**curr_val)+1
 
-  def async_get_data_by_idx(self, idx, process_data=True, add_ta=True, apply_nat_log=True, fill_na=True, cal_pct_chg=False, to_numpy=True):
+  def async_get_data_by_idx(self, idx, process_data=True, add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False, to_numpy=True):
     if idx < 0: idx = len(self) + idx
     if idx >= len(self) or idx < 0: raise IndexError("list index out of range")
     # print(f"started task {idx}")
@@ -828,7 +840,6 @@ class DatasetBaseBackend(Dataset):
 
     data_in_required_format = self.process_data_raw(data_in_required_format,add_ta=add_ta, apply_nat_log=apply_nat_log, fill_na=fill_na, cal_pct_chg=cal_pct_chg)
     data_in_required_format = data_in_required_format[self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=cal_pct_chg)]
-
     # # return base_data
     # if process_data:
     #   data_in_required_format = self.process_data_raw(data_in_required_format,add_ta=add_ta, apply_nat_log=apply_nat_log, fill_na=fill_na, cal_pct_chg=cal_pct_chg)
@@ -839,31 +850,45 @@ class DatasetBaseBackend(Dataset):
 
     # Get current level index id
     current_level_index = self.search_time_index(data_in_required_format, idx_start_date)
-
+    
     # Get all input time step 
     all_inputs = self.get_multi_slice_backward_output(data_in_required_format, current_level_index)
+    hold_col = self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=False)
+    all_inputs = [all_input[hold_col] for all_input in all_inputs]
 
     if self.squeeze_forward:
     #   # Get output
-      single_output = self.get_packed_forward_target(data_in_required_format, current_level_index)
+      output_data = self.get_single_slice_forward_output(data_in_required_format, current_level_index)
       if not cal_pct_chg: # Add trend
-        single_output.loc[single_output.index[0],self.get_extra_direction_fields()] = self.direction_close(all_inputs[-1].copy().tail(1).close.to_numpy()[0], single_output.copy().close.to_numpy()[0])
+        output_data.loc[output_data.index[0],self.get_extra_direction_fields()] = self.direction_close(all_inputs[-1].copy().tail(1).close.to_numpy()[0], output_data.copy().close.to_numpy()[0])
+      output_data = output_data[self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=True)]
+
     else:
-      single_output = self.get_single_slice_forward_output(data_in_required_format, current_level_index)
+      output_data = self.get_multi_slice_forward_output(data_in_required_format, current_level_index)
       if not cal_pct_chg:
-        for each_y_seq_idx in range(self.glob_time_step_forwards):
-          single_output.loc[single_output.index[each_y_seq_idx],self.get_extra_direction_fields()] = self.direction_close(all_inputs[-1].copy().tail(1).close.to_numpy()[0], single_output.copy().close.to_numpy()[each_y_seq_idx])
-    hold_col = self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=False)
-    print(hold_col, type(all_inputs))
-    all_inputs = all_inputs[hold_col]
-    single_output = single_output[self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=True)]
-    
+        # for each_y_seq_idx in range(self.glob_time_step_forwards):
+        #   output_data.loc[output_data.index[each_y_seq_idx],self.get_extra_direction_fields()] = self.direction_close(all_inputs[-1].copy().tail(1).close.to_numpy()[0], output_data.copy().close.to_numpy()[each_y_seq_idx])
+        
+        import functools
+        def direction_close(close_next, close_prev=None):
+          return self.direction_close(close_prev=close_prev, close_next=close_next)
+
+        # Create a partial function with a default threshold value
+        direction_close = functools.partial(direction_close, close_prev=all_inputs[-1]['close'].iloc[-1])
+        
+        # Apply the comparison function to column A of the dataframe and create a new column
+        output_data = output_data.assign(
+            **{name: output_data['close'].apply(direction_close).str[i] for i, name in enumerate(self.get_extra_direction_fields())}
+        )        
+        output_data = output_data[self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=True)]
+
+
     if to_numpy:
       all_inputs = np.array(all_inputs)
-      single_output = np.array(single_output)
-    return [all_inputs,single_output]
+      output_data = np.array(output_data)
+    return [all_inputs,output_data]
 
-  def slice_data_get(self, idxs, process_data=True,add_ta=True, apply_nat_log=True, fill_na=True, cal_pct_chg=False, to_numpy=True):
+  def slice_data_get(self, idxs, process_data=True,add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False, to_numpy=True):
     background_tasks = set()
     results = []
     for idx in idxs:
@@ -875,7 +900,7 @@ class DatasetBaseBackend(Dataset):
   def __getitem__(self,idxs):
     return self.get_item(idxs)
 
-  def get_item(self, idxs, process_data=True,add_ta=True, apply_nat_log=True, fill_na=True, cal_pct_chg=False, to_numpy=True):
+  def get_item(self, idxs, process_data=True,add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False, to_numpy=True):
     """
       Assuming all data points starting from the start date to the end date were 
       available, this method selects the nth row from the full data set.
@@ -887,7 +912,7 @@ class DatasetBaseBackend(Dataset):
       pass
     elif isinstance(idxs, slice):  
       start, stop, step = idxs.start or 0, idxs.stop or len(self), idxs.step or 1
-      # print(start, stop, step)
+      # print("start, stop, step",start, stop, step)
       idxs = range(start, stop, step)
     elif isinstance(idxs, int):  
       idxs = [idxs]
@@ -966,7 +991,7 @@ class DatasetBaseBackend(Dataset):
     if fill_na: X = X.pct_change().fillna(0)
     return self.replace_inf(X)
 
-  def direction_close(self, close_prev, close_next):
+  def direction_close(self,close_prev,close_next):
     if close_prev < close_next:
       return [0,0,1]
     elif close_prev > close_next:
@@ -987,7 +1012,7 @@ class DatasetBaseBackend(Dataset):
     X = self.replace_inf(X)
     return X
 
-  def process_data_raw(self, data_in_required_format, add_ta=True, apply_nat_log=True, fill_na=True, cal_pct_chg=False):
+  def process_data_raw(self, data_in_required_format, add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False):
     # print("In process_data_raw")
     if add_ta:
       # Add technical analysis
@@ -1163,4 +1188,3 @@ class historicCryptoBackend(DatasetBaseBackend):
     nest_asyncio.apply()
     raw_data = asyncio.run(HistoricalData(asset, resolution, start_date, end_date,verbose = kwarg.get('verbose', False)).retrieve_data())
     return raw_data
-
