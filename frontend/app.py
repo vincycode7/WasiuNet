@@ -3,15 +3,15 @@ import streamlit as st
 
 # sidebar = st.s
 st.set_page_config(
-    page_title="Ex-stream-ly Cool App",
+    page_title="WasiuNet",
     page_icon="🧊",
     layout="wide",
     initial_sidebar_state="expanded",
-    menu_items={
-        'Get Help': 'https://www.extremelycoolapp.com/help',
-        'Report a bug': "https://www.extremelycoolapp.com/bug",
-        'About': "# This is a header. This is an *extremely* cool app!"
-    }
+    # menu_items={
+    #     'Get Help': 'https://www.extremelycoolapp.com/help',
+    #     'Report a bug': "https://www.extremelycoolapp.com/bug",
+    #     'About': "# This is a header. This is an *extremely* cool app!"
+    # }
 )
 
 col1, col2, col3 = st.columns([7,5,4])
