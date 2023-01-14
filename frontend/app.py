@@ -1,7 +1,7 @@
 import os,sys
 sys.path.append(os.path.abspath(os.path.join(os.path.abspath(''), '..'))) # 
 import streamlit as st
-from  data_eng import data_util
+# from  data_eng import data_util
 
 # sidebar = st.s
 st.set_page_config(
@@ -16,6 +16,7 @@ st.set_page_config(
     # }
 )
 
+# Get inputs
 col1, col2, col3 = st.columns([7,5,4])
 col2.markdown("### WasiuNet")
 col = st.columns([1,5,5,5,2,1])
@@ -23,6 +24,12 @@ asset1 = col[1].selectbox("select asset",["btc-usd", "eth-usd"])
 trade_date = col[2].date_input("start safe entry search - date")
 trade_time = col[3].time_input("start safe entry search - time")
 col = col[4].select_slider("Auto safe trade",["Off","On"])
+
+# Send input to ml microsevice with inputs
+# user_token, asset, date, time,run_prediction_flag endpoint and either get just data or data and prediction 
+
+
+
 # st.write(data_util.data_util.convert_date_from_backend_format(trade_date)+"-"+trade_time.replace(":","-"))
 # st.error('This is an error', icon="🚨")
 
