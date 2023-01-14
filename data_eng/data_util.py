@@ -1,4 +1,4 @@
-import requests, json, time, sys, aiohttp, torch
+import requests, json, time, sys, aiohttp, torch, cProfile, random
 
 import numpy as np
 import pandas as pd
@@ -6,6 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data as data
 import torch.nn.functional as F
+import pytorch_lightning as pl
 
 from datetime import datetime, timedelta
 from torch.utils.data import random_split
@@ -17,6 +18,8 @@ from datetime import datetime
 from random import randint
 from collections import OrderedDict
 from torchinfo import summary
+from typing import Dict, Union, Any, List, Optional
+from concurrent.futures import ThreadPoolExecutor
 
 np.seterr(divide = 'ignore') 
 #TODO: Implement Base required field - This is to check the required fields to use the 
@@ -95,6 +98,9 @@ np.seterr(divide = 'ignore')
 #TODO: preload function from api (Done)
 #TODO: load from file (Done)
 #TODO: pad missing records from file result. (Not-Yet)
+
+
+np.seterr(divide = 'ignore') 
 
 class HistoricalData(object):
     """
@@ -383,84 +389,54 @@ import ta
 import asyncio
 import time
 
-## Import required libraries
-from datetime import datetime
-from torch.utils.data import Dataset
-# from Historic_Crypto import HistoricalData
-from collections import OrderedDict
-import pandas as pd
-import numpy as np
-import torch as tch
-import ta
-import asyncio
-import time
-
 class DatasetBaseBackend(Dataset):
-  def __init__(self, asset, resolution, start_date, end_date,glob_time_step_forwards=7,glob_time_step_backwards=None, fea_output_per_data_slice=30, fea_data_slice=7, technical_analysis_config=None,**kwarg):
-    """
-      This method inits the Custom dataset for the trader.
-      This method has all basic methods required to extend this
-      project to a new dataset
-      asset: The  Exchage  pair to pull e.g BTC-USD (This is a backend specific 
-             parameter, So read backend doc to know parameter format)
+  def __init__(self, asset: str, resolution: Union[int,float,str], start_date: str, end_date: str, glob_time_step_forwards: int = 7, 
+                glob_time_step_backwards: Optional[int] = None, fea_output_per_data_slice: int = 30, fea_data_slice: int = 7, 
+                technical_analysis_config: Optional[List[Dict]] = None,**kwarg)-> None:
+        """
+        Initialize a custom dataset for trading with basic methods required to extend to a new dataset.
 
-      resolution: This is the timeframe between data, e.g 1m, 2m, 60, 90 
-             (This is a backend specific parameter, So read backend doc to know 
-             parameter format)
+        :param asset: The  Exchage  pair to pull e.g BTC-USD (Backend specific parameter, read backend doc to know format)
+        :param resolution: Timeframe between data in seconds. E.g 1m == 60, 2m == 120 (Backend specific parameter, read backend doc to know format)
+        :param start_date: Date for dataset object to start pulling data from. Expected format '%Y-%m-%d-%H-%M-%S'
+        :param end_date: Date for dataset object to stop pulling data. Expected format '%Y-%m-%d-%H-%M-%S'
+        :param glob_time_step_forwards: Number of steps forward from start_date. Default is 7.
+        :param glob_time_step_backwards: Number of steps backward from start_date. Default is None.
+        :param technical_analysis_config: List of dictionaries for each ta function {"ta_func_name":"RSI", ta_func_config:{}}.
+        :param fea_data_slice: Number of data slices a single data point should have.
+        :param fea_output_per_data_slice: Number of data points in each data slice.
 
-      start_date: Date for dataset object to start pulling data from. Expected 
-             format '%Y-%m-%d-%H-%M-%S'
+        """
 
-      end_date: Date for dataset object to stop pulling data. Expected format 
-             '%Y-%m-%d-%H-%M-%S'
+        self.start_date = datetime.strptime(start_date, '%Y-%m-%d-%H-%M-%S')
+        self.end_date = datetime.strptime(end_date, '%Y-%m-%d-%H-%M-%S') + timedelta(seconds=resolution) 
+        self.asset = asset
+        self.fea_output_per_data_slice = fea_output_per_data_slice
+        self.fea_data_slice = fea_data_slice
+        self.resolution = resolution
+        self.glob_time_step_forwards = glob_time_step_forwards
 
-      glob_time_step_forwards: Timestep forward, e.g take 7 steps forward from 
-             start_date. default value is 7. This is part of the training 
-             stategy as it is used in the __getitem__ method.
+        if isinstance(self.resolution, (int, float)):
+          self.normal_step = self.resolution
+        else:
+          # TODO: map string and convert string to respective integer value in minutes
+          #        this will be used in the getitem method to get ith index data point.
+          pass
 
-      glob_time_step_backwards: Timestep backward, e.g take 448 steps forward 
-             from start_date. default value is 448. This is part of the training 
-             stategy as it is used in the __getitem__ method.
+        if glob_time_step_backwards is None:
+            self.glob_time_step_backwards = (self.backward_step_func(fea_data_slice)*fea_output_per_data_slice)*5
+        else:
+            self.glob_time_step_backwards = glob_time_step_backwards
 
-      technical_analysis_config: This is a list of dictionaries where each dictionary 
-            are in this format {"ta_func_name":"RSI", ta_func_config:{}}.
-            Do note for the ta_func_config, user needs to read function's documentation
-            to know what hyper parameter needs to go in e.g for RSI hyper parameters are
-            window: int=14, fillna: bool=False, while close is not a hyper-parameter.
-          
-      fea_data_slice: This parameter specifies the amount of data slices a single data point
-            should has e.g if i index row 0, output should be 7 different data slices with the same
-            fixed row length.
-
-      fea_output_per_data_slice: This parameter specifies the number of data points to be
-            contained in each data slice. E.g one data point contains 7 data slices and each data 
-            slice has 30 sub data points
-    """
-    self.start_date = datetime.strptime(start_date, '%Y-%m-%d-%H-%M-%S')
-    self.end_date = datetime.strptime(end_date, '%Y-%m-%d-%H-%M-%S')
-    self.asset = asset
-    self.fea_output_per_data_slice=fea_output_per_data_slice
-    self.fea_data_slice=fea_data_slice
-    self.resolution = resolution
-    if isinstance(self.resolution, (int, float)):
-      self.normal_step = self.resolution
-    else:
-      # TODO: map string and convert string to respective integer value in minutes
-      #        this will be used in the getitem method to get ith index data point.
-      pass
-    self.glob_time_step_forwards = glob_time_step_forwards
-    # self.glob_time_step_backwards = glob_time_step_backwards
-    self.glob_time_step_backwards = (self.backward_step_func(fea_data_slice)*fea_output_per_data_slice)*5 if glob_time_step_backwards is None else glob_time_step_backwards
-    # print(self.glob_time_step_backwards)
-    self.set_available_technical_analysis_functions()
-    self.set_technical_analysis_for_dataloader(technical_analysis_config)
-    self.data_scaled = False
-    self._extra_direction_fields = ["direction_-1_conf","direction_0_conf","direction_1_conf"]
-    self._required_base_features = ['close','high','low','open','volume']
-    self._required_base_target = ['close']
-    self.squeeze_forward = kwarg.get('squeeze_forward',False)
-    self.init_preload(**kwarg)
-
+        # print(self.glob_time_step_backwards)
+        self.set_available_technical_analysis_functions()
+        self.set_technical_analysis_for_dataloader(technical_analysis_config)
+        self.data_scaled = False
+        self._extra_direction_fields = ["direction_-1_conf","direction_0_conf","direction_1_conf"]
+        self._required_base_features = ['close','high','low','open','volume']
+        self._required_base_target = ['close']
+        self.squeeze_forward = kwarg.get('squeeze_forward',False)
+        self.init_preload(**kwarg)
   def convert_date_from_backend_format(self,date, format=None):
     """
       This method is used to convert from custom dataset datetime format to 
@@ -563,22 +539,39 @@ class DatasetBaseBackend(Dataset):
     num_of_expected_samps = int(num_of_sec_diff.total_seconds()/60)
     return num_of_expected_samps
 
-  def expand_dset_to_time(self,data, idx, outs, steps,forward,include_current_idx):
-    """
-      This method helps slice the data into current output expected
-    """
-      # backward pass
-    outs = outs + 1 if not include_current_idx else outs
-    if not forward:
-        new_data = data.iloc[(idx-(outs*steps))+steps:idx+include_current_idx:steps]
 
-    # forward pass
-    if forward:
-        include_current_id_for = int(not include_current_idx) if forward else int(include_current_idx)
-        add_to_steps = 1 if steps<=1 else 0
-        new_data = data.iloc[(idx+steps)-include_current_idx:(idx+(outs*steps))+include_current_idx:steps]
+  def expand_dset_to_time(self, data: pd.DataFrame, idx: int, outs: int, steps: int, forward: bool, include_current_idx: bool):
+      """
+      This method slices the dataframe to include the current index and the number of steps specified in 'outs'
+      
+      Parameters:
+          data (pd.DataFrame): The dataframe to slice
+          idx (int): The index of the current step in the dataframe
+          outs (int): The number of steps to include in the slice
+          steps (int): The step size for the slice
+          forward (bool): Determines whether to slice the dataframe forward or backward
+          include_current_idx (bool): Determines whether to include the current index in the slice
+      
+      Returns:
+          pd.DataFrame: The sliced dataframe
+      """
+      # basic input validation
+      if idx >= len(data):
+          raise ValueError("idx should be less than the length of dataframe")
+      if steps <= 0:
+          raise ValueError("steps should be greater than zero")
+      if outs <= 0:
+          raise ValueError("outs should be greater than zero")
 
-    return new_data.copy()
+      if forward:
+          start = idx + (steps - include_current_idx)
+          stop = idx + (outs * steps) + include_current_idx
+      else:
+          start = idx - (outs * steps) + steps
+          stop = idx + include_current_idx
+
+      new_data = data.iloc[start:stop:steps]
+      return new_data.copy()
 
 
   def get_available_technical_analysis_functions(self, return_func=True):
@@ -671,17 +664,22 @@ class DatasetBaseBackend(Dataset):
     for each_ta in ta_config: cols.add(self.ta_to_col_name(each_ta))
     return list(cols)
 
-  def ta_to_col_name(self, each_ta):
-    """
-    This function takes in the technical config for each ta dict and the hyper 
-    parameter and returns the column name to represent that ta in the data frame
+  def ta_to_col_name(self, each_ta: Dict[str, Union[str, Dict[str, Any]]]) -> str:
+      """
+      This function takes in the technical config for each ta dict and the hyper 
+      parameter and returns the column name to represent that ta in the data frame
+      
+      Parameters:
+          each_ta (Dict[str, Union[str, Dict[str, Any]]]) : A dictionary containing the configuration 
+          of the technical analysis, containing 'ta_func_name' and 'ta_func_config' keys
+          
+      Returns:
+          str : A string representing the column name of that ta
 
-    ta_func_name: ta function name to init that ta for dataframe
-    col_hyper: the hyperparamters in the ta config
-    """
-    col_hyper = each_ta.get('ta_func_config')
-    ta_func_name = each_ta.get('ta_func_name')
-    return "-".join(["ta_func:"+ta_func_name]+[str(ta_key)+":"+str(ta_value) for ta_key, ta_value in col_hyper.items()])
+      """
+      col_hyper = each_ta.get('ta_func_config', {})
+      ta_func_name = each_ta.get('ta_func_name')
+      return "-".join(["ta_func:"+ta_func_name]+[f"{ta_key}:{ta_value}" for ta_key, ta_value in col_hyper.items()])
 
   def add_technical_analysis_to_dataset(self,data_in_required_format):
     """
@@ -866,9 +864,6 @@ class DatasetBaseBackend(Dataset):
     else:
       output_data = self.get_multi_slice_forward_output(data_in_required_format, current_level_index)
       if not cal_pct_chg:
-        # for each_y_seq_idx in range(self.glob_time_step_forwards):
-        #   output_data.loc[output_data.index[each_y_seq_idx],self.get_extra_direction_fields()] = self.direction_close(all_inputs[-1].copy().tail(1).close.to_numpy()[0], output_data.copy().close.to_numpy()[each_y_seq_idx])
-        
         import functools
         def direction_close(close_next, close_prev=None):
           return self.direction_close(close_prev=close_prev, close_next=close_next)
@@ -879,7 +874,7 @@ class DatasetBaseBackend(Dataset):
         # Apply the comparison function to column A of the dataframe and create a new column
         output_data = output_data.assign(
             **{name: output_data['close'].apply(direction_close).str[i] for i, name in enumerate(self.get_extra_direction_fields())}
-        )        
+        )    
         output_data = output_data[self.return_all_output_col(get_required_base_features=True, get_required_base_target=True, get_all_ta_cofig_output_columns=add_ta, get_extra_direction_fields=True)]
 
 
@@ -888,14 +883,40 @@ class DatasetBaseBackend(Dataset):
       output_data = np.array(output_data)
     return [all_inputs,output_data]
 
-  def slice_data_get(self, idxs, process_data=True,add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False, to_numpy=True):
+  def slice_data_get_old(self, idxs, process_data=True,add_ta=True, apply_nat_log=False, fill_na=True, cal_pct_chg=False, to_numpy=True):
     background_tasks = set()
     results = []
     for idx in idxs:
-      time.sleep(3)
+      if not self.preload_data_file:
+        time.sleep(3)
       results.append(self.async_get_data_by_idx(idx=idx, process_data=process_data,add_ta=add_ta, apply_nat_log=apply_nat_log, fill_na=fill_na, cal_pct_chg=cal_pct_chg,to_numpy=to_numpy))
-      time.sleep(3)
+      if not self.preload_data_file:
+        time.sleep(3)
     return results
+    
+  def slice_data_get(self, idxs: List[int], process_data: bool = True, add_ta: bool = True, apply_nat_log: bool = False,
+                    fill_na: bool = True, cal_pct_chg: bool = False, to_numpy: bool = True) -> List:
+      """
+      This function retrieves the data from the given indexes.
+      
+      Parameters:
+          idxs (List[int]) : list of indexes to retrieve the data from
+          process_data (bool) : Flag for processing data before returning. default is True
+          add_ta (bool) : Flag for adding technical analysis to the data. default is True
+          apply_nat_log (bool) : Flag for applying natural log to the data. default is False
+          fill_na (bool) : Flag for filling the missing data. default is True
+          cal_pct_chg (bool) : Flag for calculating the percent change of the data. default is False
+          to_numpy (bool) : Flag for converting the data to numpy array. default is True
+      
+      Returns:
+          List : a list containing the data
+      """
+      results = []
+      for idx in idxs:
+          results.append(self.async_get_data_by_idx(idx=idx, process_data=process_data,add_ta=add_ta,
+                                                  apply_nat_log=apply_nat_log, fill_na=fill_na,
+                                                  cal_pct_chg=cal_pct_chg,to_numpy=to_numpy))
+      return results
 
   def __getitem__(self,idxs):
     return self.get_item(idxs)
@@ -967,24 +988,9 @@ class DatasetBaseBackend(Dataset):
     return base_data
 
   def replace_inf(self, X):
-    # Replace inf with max value for each feature column
-    for each_col in list(X.columns):
-      indexes = list(X[((X[each_col] == float("inf")))].index)
-      # for i in indexes: 
-      #   X.at[i, each_col] = max(X[each_col].drop(indexes))
-      X.at[indexes, each_col] = max(X[each_col].drop(indexes))
-
-      indexes = list(X[((X[each_col] == float("-inf")))].index)
-      # for i in indexes:
-      #   try:
-      #     X.at[i, each_col] = min(X[each_col].drop(indexes))
-      #   except:
-      #     X.at[i, each_col] = 0
-      try:
-        X.at[indexes, each_col] = min(X[each_col].drop(indexes))
-      except:
-        X.at[indexes, each_col] = 0
-    return X
+      # Replace inf with max value for each feature column
+      X = X.clip(lower=X.min(), upper=X.max(), axis=1)
+      return X
 
   def cal_pct_chg(self,X,fill_na):
     # Fill na with zeros
@@ -1188,3 +1194,4 @@ class historicCryptoBackend(DatasetBaseBackend):
     nest_asyncio.apply()
     raw_data = asyncio.run(HistoricalData(asset, resolution, start_date, end_date,verbose = kwarg.get('verbose', False)).retrieve_data())
     return raw_data
+

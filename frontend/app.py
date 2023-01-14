@@ -1,5 +1,7 @@
+import os,sys
+sys.path.append(os.path.abspath(os.path.join(os.path.abspath(''), '..'))) # 
 import streamlit as st
-# from ..backend.utils import data_util
+from  data_eng import data_util
 
 # sidebar = st.s
 st.set_page_config(
