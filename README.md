@@ -3,15 +3,18 @@ A time series future asset price estimator, using multiple timeframe datapoint f
 
 Project currently in development in google colab, Follow link below to access.
 
-1. Microservices 
-    - **auth** (For signups and signins)
-    - **frontend** (For visual display)
-    - **ml** (For model training, testing, validation and running predictions)
-    - **safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.) 
-
-
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
+1. Microservices 
+    - **auth** (For signups and signins)
+        - [Auth Tests](auth/tests)
+    - **frontend** (For visual display)
+        - [Frontend Tests](frontend/tests)
+    - **ml** (For model training, testing, validation and running predictions)
+        - [ML Tests](ml/tests)
+    - **safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.) 
+        - [Safepoint Tracker Tests](safepoint_tracker/tests)
+    
 Resources:
 
 (1) [NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE](https://arxiv.org/pdf/1409.0473.pdf)
