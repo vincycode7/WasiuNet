@@ -19,13 +19,21 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
+      with:
+        ref: ${{github.sha}}
+
+    - name: Load version and build number
+      run: |
+        export VERSION=$(grep version ${{ matrix.microservice }}/version.txt | cut -d '=' -f 2)
+        export BUILD_NUMBER=$(grep build_number ${{ matrix.microservice }}/version.txt | cut -d '=' -f 2)
 
     - name: Build, Test and Push all micro-service
       run: |
         cd ${{ matrix.microservice }}
-        docker build -t ${{ matrix.microservice }} .
-        if ! docker run --rm ${{ matrix.microservice }} pytest; then exit 1; fi
-        docker tag ${{ matrix.microservice }}:latest <your_docker_registry>/${{ matrix.microservice }}:latest
+        export GIT_SHA=${{github.sha}}
+        export TIMESTAMP=$(date +%s)
+        docker build -t ${{ matrix.microservice }}:$VERSION-$BUILD_NUMBER-$TIMESTAMP-$GIT_SHA .
+        if ! docker run --rm ${{ matrix.microservice }}:$VERSION-$BUILD_NUMBER-$TIMESTAMP-$GIT_SHA pytest; then exit 1; fi
         echo ${{ secrets.DOCKER_USERNAME }}
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/${{ matrix.microservice }}:latest
+        docker push <your_docker_registry>/${{ matrix.microservice }}:$VERSION-$BUILD_NUMBER-$TIMESTAMP-$GIT_SHA
