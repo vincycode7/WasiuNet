@@ -1,8 +1,5 @@
-2 / 2
 
-Sure, here's an example of a GitHub Actions workflow file (main.yml) that builds and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder:
-
-Copy code
+# Sure, here's a GitHub Actions workflow file (main.yml) that builds, tests and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder
 name: Build, Test and Push Microservices
 
 on:
@@ -27,7 +24,7 @@ jobs:
         export VERSION=$(grep version ${{ matrix.microservice }}/version.txt | cut -d '=' -f 2)
         export BUILD_NUMBER=$(grep build_number ${{ matrix.microservice }}/version.txt | cut -d '=' -f 2)
 
-    - name: Build, Test and Push all micro-service
+    - name: Build, Test and Push all microservice
       run: |
         cd ${{ matrix.microservice }}
         export GIT_SHA=${{github.sha}}
