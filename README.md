@@ -31,6 +31,9 @@ Note: Project currently in development in google colab, Follow link below to acc
     - **mock auth testing for all auth microservices [not-started]**
     - **deploy [not-started]**
 
+3. Installation
+    - None
+
 Resources:
 
 (1) [NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE](https://arxiv.org/pdf/1409.0473.pdf)
