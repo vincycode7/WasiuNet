@@ -36,10 +36,10 @@ Note: Project currently in development in google colab, Follow link below to acc
 
 4. Installation
     - Clone Repo using `git clone https://github.com/vincycode7/WasiuNet.git`
-    - Setup and Run [Frontend](frontend/README.md)
-    - Setup and Run [ML](ml/README.md)
-    - Setup and Run [SafePoint_Tracking](safepoint_tracker/README.md)
-    - Setup and Run [Auth](auth/README.md)
+    - [Setup and Run Frontend](frontend/README.md)
+    - [Setup and Run ML](ml/README.md)
+    - [Setup and Run SafePoint_Tracking](safepoint_tracker/README.md)
+    - [Setup and Run Auth](auth/README.md)
 
 Resources:
 
