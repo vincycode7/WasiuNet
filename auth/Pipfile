@@ -4,9 +4,8 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-streamlit = "*"
-pytest = "*"
 flask = "*"
+pytest = "*"
 
 [dev-packages]
 

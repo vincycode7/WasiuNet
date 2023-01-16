@@ -35,7 +35,9 @@ Note: Project currently in development in google colab, Follow link below to acc
     - None
 
 4. Installation
-    - None
+    - [Frontend](frontend/README.md)
+    - [ML](ml/README.md)
+    - [SafePoint_Tracking](safepoint_tracker/README.md)
 
 Resources:
 
