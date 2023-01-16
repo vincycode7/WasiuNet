@@ -15,6 +15,22 @@ Note: Project currently in development in google colab, Follow link below to acc
     - **safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.) 
         - [Safepoint Tracker Tests](safepoint_tracker/tests)
     
+2. Project-Plan
+    - **Init Project [done]**
+    - **Include files from research environment (google colab) [inprogress(continous-development)]**
+    - **Init Dummy Project Boiler plate to handle, kubernetes deploymeny, github-gitaction, microservices, testing [done]**
+    - **Build out frontend using steamlit [inprogress]**
+    - **Implement test cases for frontend [not-started]**
+    - **Build out ml using research code and a flask webapp to recieve and send out data [not-started]**
+    - **Implement test cases for ml [not-started]**
+    - **Build out safepoint_tracker to track ml output fed from frontend [not-started]**
+    - **Implement test cases for safepoint_tracker [not-started]**
+    - **Introduce database for all microservices [not-started]**
+    - **mock database testing for all microservices [not-started]**
+    - **Build out Flask app auth microservice to signup, login and give tokens, this will help restrict access to all the other services [not-started]**
+    - **mock auth testing for all auth microservices [not-started]**
+    - **deploy [not-started]**
+
 Resources:
 
 (1) [NEURAL MACHINE TRANSLATION BY JOINTLY LEARNING TO ALIGN AND TRANSLATE](https://arxiv.org/pdf/1409.0473.pdf)
