@@ -38,6 +38,7 @@ Note: Project currently in development in google colab, Follow link below to acc
     - [Frontend](frontend/README.md)
     - [ML](ml/README.md)
     - [SafePoint_Tracking](safepoint_tracker/README.md)
+    - [Auth](auth/README.md)
 
 Resources:
 
