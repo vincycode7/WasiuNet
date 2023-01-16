@@ -1,18 +1,59 @@
-name: Docker Image CI
+2 / 2
+
+Sure, here's an example of a GitHub Actions workflow file (main.yml) that builds and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder:
+
+Copy code
+name: Build, Test and Push Microservices
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
-
   build:
-
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag dummy_service:$(date +%s)
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Build, Test and Push auth container
+      run: |
+        cd auth
+        docker build -t auth .
+        if ! docker run --rm auth pytest; then exit 1; fi
+        docker tag auth:latest <your_docker_registry>/auth:latest
+        echo ${{ secrets.DOCKER_USERNAME }}
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push <your_docker_registry>/auth:latest
+
+    - name: Build, Test and Push frontend container
+      run: |
+        cd frontend
+        docker build -t frontend .
+        if ! docker run --rm auth pytest; then exit 1; fi
+        docker tag frontend:latest <your_docker_registry>/frontend:latest
+        echo ${{ secrets.DOCKER_USERNAME }}
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push <your_docker_registry>/auth:latest
+
+    - name: Build, Test and Push ml container
+      run: |
+        cd ml
+        docker build -t ml .
+        if ! docker run --rm auth pytest; then exit 1; fi
+        docker tag ml:latest <your_docker_registry>/ml:latest
+        echo ${{ secrets.DOCKER_USERNAME }}
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push <your_docker_registry>/auth:latest
+
+    - name: Build, Test and Push safepoint_tracker container
+      run: |
+        cd safepoint_tracker
+        docker build -t safepoint_tracker .
+        if ! docker run --rm auth pytest; then exit 1; fi
+        docker tag safepoint_tracker:latest <your_docker_registry>/safepoint_tracker:latest
+        echo ${{ secrets.DOCKER_USERNAME }}
+        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        docker push <your_docker_registry>/auth:latest
