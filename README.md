@@ -1,7 +1,7 @@
 # WasiuNet
 A time series future asset price estimator, using multiple timeframe datapoint for future price estimation.
 
-Project currently in development in google colab, Follow link below to access.
+Note: Project currently in development in google colab, Follow link below to access, Also note that project on github is still in boilerplate stage, currently structuring folders to take into account microservice deployment using kubernetes, CI/CD using git actions to build and push docker-containers to dockerhub for kubernetes to pull and structuring the test for each micro service.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
