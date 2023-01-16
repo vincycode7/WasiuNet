@@ -54,4 +54,4 @@ Resources:
 
 (8)[Microservices in Python using Flask Framework | Dockerize and Deploy to Kubernetes with Helm](https://www.youtube.com/watch?v=SdTzwYmsgoU&list=PL8klaCXyIuQ4RYLGVJUO_iOkmumkXKjPY&index=2)
 
-(9)[Kubernetes Tutorial for Beginners [FULL COURSE in 4 Hours](https://www.youtube.com/watch?v=X48VuDVv0do)
+(9)[Kubernetes Tutorial for Beginners FULL COURSE in 4 Hours](https://www.youtube.com/watch?v=X48VuDVv0do)
