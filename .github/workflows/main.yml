@@ -1,5 +1,5 @@
 
-# Sure, here's a GitHub Actions workflow file (main.yml) that builds, tests and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder
+# Here's a GitHub Actions workflow file (main.yml) that builds, tests and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder
 name: Build, Test and Push Microservices
 
 on:
