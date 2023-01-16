@@ -31,7 +31,10 @@ Note: Project currently in development in google colab, Follow link below to acc
     - **mock auth testing for all auth microservices [not-started]**
     - **deploy [not-started]**
 
-3. Installation
+3. General System Architecture
+    - None
+
+4. Installation
     - None
 
 Resources:
