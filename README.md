@@ -6,13 +6,13 @@ Note: Project currently in development in google colab, Follow link below to acc
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
 1. Microservices 
-    - **auth** (For signups and signins)
+    - [**auth (For signups and signins)**](auth)
         - [Auth Tests](auth/tests)
-    - **frontend** (For visual display)
+    - [**frontend (For visual display)**](frontend)
         - [Frontend Tests](frontend/tests)
-    - **ml** (For model training, testing, validation and running predictions)
+    - [**ml** (For model training, testing, validation and running predictions)](ml)
         - [ML Tests](ml/tests)
-    - **safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.) 
+    - [**safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.)](safepoint_tracker)
         - [Safepoint Tracker Tests](safepoint_tracker/tests)
     
 2. Project-Plan
