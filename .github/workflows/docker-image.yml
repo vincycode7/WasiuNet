@@ -13,47 +13,19 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        microservice: [auth, frontend, ml, safepoint_tracker]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Build, Test and Push auth container
+    - name: Build, Test and Push all micro-service
       run: |
-        cd auth
-        docker build -t auth .
-        if ! docker run --rm auth pytest; then exit 1; fi
-        docker tag auth:latest <your_docker_registry>/auth:latest
+        cd ${{ matrix.microservice }}
+        docker build -t ${{ matrix.microservice }} .
+        if ! docker run --rm ${{ matrix.microservice }} pytest; then exit 1; fi
+        docker tag ${{ matrix.microservice }}:latest <your_docker_registry>/${{ matrix.microservice }}:latest
         echo ${{ secrets.DOCKER_USERNAME }}
         echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/auth:latest
-
-    - name: Build, Test and Push frontend container
-      run: |
-        cd frontend
-        docker build -t frontend .
-        if ! docker run --rm auth pytest; then exit 1; fi
-        docker tag frontend:latest <your_docker_registry>/frontend:latest
-        echo ${{ secrets.DOCKER_USERNAME }}
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/auth:latest
-
-    - name: Build, Test and Push ml container
-      run: |
-        cd ml
-        docker build -t ml .
-        if ! docker run --rm auth pytest; then exit 1; fi
-        docker tag ml:latest <your_docker_registry>/ml:latest
-        echo ${{ secrets.DOCKER_USERNAME }}
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/auth:latest
-
-    - name: Build, Test and Push safepoint_tracker container
-      run: |
-        cd safepoint_tracker
-        docker build -t safepoint_tracker .
-        if ! docker run --rm auth pytest; then exit 1; fi
-        docker tag safepoint_tracker:latest <your_docker_registry>/safepoint_tracker:latest
-        echo ${{ secrets.DOCKER_USERNAME }}
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/auth:latest
+        docker push <your_docker_registry>/${{ matrix.microservice }}:latest
