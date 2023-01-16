@@ -13,18 +13,74 @@ spec:
         app: microservices
     spec:
       containers:
-      - name: service1
-        image: service1:latest
+      - name: auth
+        image: <docker_registry>/auth:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
-      - name: service2
-        image: service2:latest
-        ports:
-        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
       - name: frontend
-        image: frontend:latest
+        image: <docker_registry>/frontend:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      - name: ml
+        image: <docker_registry>/ml:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+      - name: safepoint_tracker
+        image: <docker_registry>/safepoint_tracker:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -34,11 +90,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: service1-service
+  name: auth-service
 spec:
   selector:
     app: microservices
-    name: service1
+    name: auth
   ports:
   - name: http
     port: 8080
@@ -48,11 +104,25 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: service2-service
+  name: ml-service
 spec:
   selector:
     app: microservices
-    name: service2
+    name: ml
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: safepoint_tracker-service
+spec:
+  selector:
+    app: microservices
+    name: safepoint_tracker
   ports:
   - name: http
     port: 8080
