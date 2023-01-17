@@ -4,20 +4,23 @@ Steps 1 - Change directory to `frontend` folder
 
 Step 2 - Install dependencies
 
-- DockerFile-Installation
+- Option 1 (DockerFile)
 
-    - Run `docker build -t myimage .`
+    - Install docker locally
+    -Build a docker image using the `Dockerfile` by running `docker build -t frontend:latest .`
 
-- Normal-Installation
+- Option 2 (Development)
 
-    - Normal
+    - Install python
+    - Install `pipenv`
+    - Install requirments using `pipenv install`
 
 Step 3 - Run project
 
-- DockerFile-Installation
+- Option 1 (DockerFile)
 
-    - Run `docker build -t myimage .`
+    - Run `sudo docker run -p 8501:8501 frontend:lastest`
 
-- Normal-Installation
+- Option 2 (Development)
 
-    - Normal
+    - Run `streamlit run app.py`
