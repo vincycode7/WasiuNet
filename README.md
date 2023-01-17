@@ -43,7 +43,10 @@ Note: Project currently in development in google colab, Follow link below to acc
 
 5. Notes
     - `pipenv` package is adviced to be used for development
-    - If contributing, remember to added new packages for each microservices using `pipenv run pip freeze > requirements.txt`.
+    - If contributing, remember to add any new package you introduced to the project on your local pc into the requirement file for each microservices by 
+        - cd to the micro service folder you are interested in
+        - activate your environment using `pipenv shell` or the equivalent command depending on the package you are using, 
+        - once environment is activated then you run `pipenv run pip freeze > requirements.txt`(or equivalent) to push all the required package from your environment into the `requirement.txt` file.
 
 6. Resources:
 

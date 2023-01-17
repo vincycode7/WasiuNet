@@ -19,7 +19,7 @@ Step 3 - Run project
 
 - Option 1 (DockerFile)
 
-    - Run `sudo docker run -p 8501:8501 frontend:lastest`
+    - Run `sudo docker run -p 8501:8501 frontend:latest`
 
 - Option 2 (Development)
 
