@@ -20,7 +20,6 @@ from torchinfo import summary
 
 np.seterr(divide = 'ignore') 
 
-
 import functools
 
 def wasiu_input_check(class_level):
@@ -112,7 +111,6 @@ class WasiuSpace(nn.Module):
         :param: d_model: a singular Cryptocurrency ticker. (str)
         :param: src_vocab_size: the price data frequency in seconds, one of: 60, 300, 900, 3600, 21600, 86400. (int)
         :param: trg_vocab_size: a date string in the format YYYY-MM-DD-HH-MM. (str)
-        :param: src_pad_idx: a date string in the format YYYY-MM-DD-HH-MM,  Default=Now. (str)
         :param: num_heads: printing during extraction, Default=True. (bool)
         :param: num_encoder_layers: a Pandas DataFrame which contains requested cryptocurrency data. (pd.DataFrame)
         :param: forward_expansion: a date string in the format YYYY-MM-DD-HH-MM,  Default=Now. (str)
@@ -125,7 +123,7 @@ class WasiuSpace(nn.Module):
                  trans_norm_first,trans_batch_first
                 ):
         super(WasiuSpace, self).__init__()
-        self.device = device
+        # self.device = device
         self.max_len = max_len
 
         # space model
@@ -189,12 +187,15 @@ class WasiuSpaceTime(nn.Module):
 
 
 
-        
+        self.embedding_dim = embedding_dim
+        self.max_len = max_len
+
         # Source Create the word position embedding layer
         self.src_position_embeddding = nn.Embedding(max_len, embedding_dim)
 
         # Target Create the word embedding layer
         self.trg_word_embedding = nn.Sequential(OrderedDict([
+                                  ('trg_inp_norm_layer_1', nn.LayerNorm(out_feat)), # Target Create the normalization layer
                                   ('trg_lin_embedding', nn.Linear(out_feat, embedding_dim)),
                                   ('dropout', nn.Dropout(dropout))
                                 ]))
@@ -209,8 +210,8 @@ class WasiuSpaceTime(nn.Module):
                                             dim_feedforward=dim_feedforward,
                                             dropout=dropout, max_len=max_len, 
                                             device=device,trans_activation=trans_activation,
-                                                        trans_batch_first=trans_batch_first,
-                                                        trans_norm_first=trans_norm_first
+                                            trans_batch_first=trans_batch_first,
+                                            trans_norm_first=trans_norm_first
                                           )
         
         # space-time model
@@ -243,9 +244,10 @@ class WasiuSpaceTime(nn.Module):
             space_seq_len * batch_size * feat_len e.g (100 * 2 * 7) or (100 * 1 * 7)
             (Tensor)
         """
-        src, trg =  self.wasiuspacetime_input_check(src, trg)
-        src = self.src_word_embedding(src).permute(0,2,1) # embed and reshape
-        
+        src, trg =  self.wasiuspacetime_input_check(src, trg) # batch_size * seq_len * 14 * 14
+        src = self.src_word_embedding(src).permute(0,2,1) # embed and reshape --> batch_sise * 14 * 14 * embedding
+        assert self.max_len-1 >= src.shape[1], f"max_length specific {self.max_len} is greater than input seq_len {src.shape[1]}"
+
         # Get src and trg shapes
         batch_size, src_seq_length, _ = src.shape
         _, trg_seq_length, _ = trg.shape
@@ -253,19 +255,19 @@ class WasiuSpaceTime(nn.Module):
         # Create Positions
         src_position = (
             torch.arange(0, src_seq_length).unsqueeze(0).expand(batch_size, src_seq_length)
-            .to(self.device)
+            .to(src.device)
         )
 
         trg_position = (
             torch.arange(0, trg_seq_length).unsqueeze(0).expand(batch_size, trg_seq_length)
-            .to(self.device)
+            .to(trg.device)
         )
 
+    
         # Embed positions into data
         embed_src = self.dropout(
             (src + self.src_position_embeddding(src_position))
         )
-        del src
 
         embed_trg = self.dropout(
             (self.trg_word_embedding(trg) + self.trg_position_embedding(trg_position)) 
@@ -275,17 +277,15 @@ class WasiuSpaceTime(nn.Module):
         )
 
         encoded_src_memory = self.wasiuspace_encoder(embed_src)
-        del embed_src
 
         out = self.wasiuspacetime_transformer_decoder(embed_trg,encoded_src_memory,tgt_mask=trg_mask)
-        del embed_trg, encoded_src_memory
         return out
 
 class WasiuNet(nn.Module):
     def __init__(self, embedding_dim, inp_feat, out_feat, in_channels, patch_size, space_seq_len,
-                 expand_HW,src_pad_idx, nhead, num_encoder_layers, num_decoder_layers, 
+                 expand_HW, nhead, num_encoder_layers, num_decoder_layers, 
                  dim_feedforward, dropout, max_len, device,trans_activation,
-                 trans_norm_first,trans_batch_first
+                 trans_norm_first,trans_batch_first,feat_map_dict
                   ):
         super(WasiuNet, self).__init__()
         # super(Transformer, self).__init__()
@@ -294,6 +294,14 @@ class WasiuNet(nn.Module):
         # self.trg_word_embedding = nn.Embedding(trg_vocab_size, embedding_size)
         # self.trg_position_embedding = nn.Embedding(max_len, embedding_size)
         self.device = device
+        self.feat_map_dict = feat_map_dict
+        self.target_feature = []
+        self.direction_feature = []
+        for key, value in self.feat_map_dict.items():
+          if key in [ 'direction_-1_conf','direction_0_conf','direction_1_conf']:
+            self.direction_feature.append(value)
+          else:
+            self.target_feature.append(value)
 
         self.wasiuspacetime = WasiuSpaceTime(embedding_dim=embedding_dim, inp_feat=inp_feat, 
                                              out_feat=out_feat, in_channels=in_channels, 
@@ -309,7 +317,9 @@ class WasiuNet(nn.Module):
         # Target Create the word embedding layer
         self.fc_out = nn.Sequential(OrderedDict([
                                   ('dropout', nn.Dropout(dropout)),  
-                                  ('decoded_out', nn.Linear(embedding_dim, out_feat))
+                                  ('decoded_out_1', nn.Linear(embedding_dim, out_feat)),
+                                  ('relu',nn.ReLU()),
+                                  ('decoded_out_2', nn.Linear(out_feat, out_feat))
                                   
                                 ]))
         
@@ -319,7 +329,7 @@ class WasiuNet(nn.Module):
     def check_wasiunet_input(src, trg):
         return src, trg
 
-    def forward(self, src, trg, future=0):        
+    def forward(self, src, trg):        
         """
           :param: src: source asset data in the format 
             time_seq_len * batch_size * space_seq_len * feat_len 
@@ -333,7 +343,122 @@ class WasiuNet(nn.Module):
             (Numpy | Tensor)
         """
         src, trg = self.check_wasiunet_input(src, trg)
+        src, trg = src.type(torch.float32), trg.type(torch.float32)
         out = self.wasiuspacetime(src, trg)
-        del src, trg
         out = self.fc_out(out)
         return out
+
+class WasiuNetTrainer(pl.LightningModule):
+    def __init__(self, model, lr=0.003, multi_label_loss_weight = 0.5, regression_loss_weight = 0.5):
+        super(WasiuNetTrainer, self).__init__()
+        self.model = model
+        self.lr = lr
+
+        # Define a weight for the multi-label loss (you can adjust this to balance the two losses)
+        self.multi_label_loss_weight = multi_label_loss_weight
+
+        # Define a weight for the regression loss (you can adjust this to balance the two losses)
+        self.regression_loss_weight = regression_loss_weight
+
+    def forward(self, src, trg): 
+        return self.model(src, trg)
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr)
+        return optimizer
+
+    def criterion(self, multi_label_pred, multi_label_target, regression_pred, regression_target):
+
+        # Define the multi-label loss function
+        multi_label_loss_fn = nn.CrossEntropyLoss()
+
+        # Define the regression loss function
+        # regression_loss_fn = nn.MSELoss()
+        regression_loss_fn = nn.L1Loss()
+
+        # Compute the multi-label loss
+        multi_label_loss = multi_label_loss_fn(multi_label_pred.float(), multi_label_target.float())
+        print(f"multi_label_loss: {multi_label_loss}") 
+
+        # Compute the regression loss
+        regression_loss = regression_loss_fn(regression_pred.float(), regression_target.float()) # get loss
+        print(f"regression_loss before scale: {regression_loss}") 
+        print(f"scale value: {regression_pred.shape[1]}")     
+        
+        # Create a tensor for the scaling factor with the correct data type
+        scaling_factor = torch.tensor(regression_pred.shape[1], dtype=torch.float)
+
+        regression_loss = torch.div(regression_loss, scaling_factor) # scale data
+        print(f"regression_loss after scale: {regression_loss}") 
+
+        
+        # Combine the two losses with the specified weights
+        combined_loss = self.multi_label_loss_weight * multi_label_loss + self.regression_loss_weight * regression_loss
+        return combined_loss
+
+    def training_step(self, batch, batch_idx):
+        # training_step defines the train loop.
+        x, y = batch
+        x = batch[0].squeeze(1)
+        y = batch[1].squeeze(1)
+
+        output = self.model(x, y[:,:-1,:])
+        y = y[:,1:,:]
+        
+        # multi_label_pred, multi_label_target, regression_pred, regression_target
+        # Compute the multi-label loss
+        loss = self.criterion(output[:,:,self.model.direction_feature], y[:,:,self.model.direction_feature], output[:,:,self.model.target_feature], y[:,:,self.model.target_feature])
+        self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return dict(
+            loss=loss,
+            log=dict(
+                train_loss=loss
+            )
+        )
+
+    def test_step(self, batch, batch_idx):
+        # this is the test loop
+        x, y = batch
+        x = batch[0].squeeze(1)
+        y = batch[1].squeeze(1)
+
+        output = self.model(x, y[:,:-1,:])
+        y = y[:,1:,:]
+        
+        # multi_label_pred, multi_label_target, regression_pred, regression_target
+        # Compute the multi-label loss
+        loss = self.criterion(output[:,:,self.model.direction_feature], y[:,:,self.model.direction_feature], output[:,:,self.model.target_feature], y[:,:,self.model.target_feature])
+        self.log("test_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return dict(
+            loss=loss,
+            log=dict(
+                train_loss=loss
+            )
+        )
+
+    def validation_step(self, batch, batch_idx):
+        # this is the validation loop
+        x, y = batch
+        x = batch[0].squeeze(1)
+        y = batch[1].squeeze(1)
+
+        output = self.model(x, y[:,:-1,:])
+        y = y[:,1:,:]
+        
+        # multi_label_pred, multi_label_target, regression_pred, regression_target
+        # Compute the multi-label loss
+        loss = self.criterion(output[:,:,self.model.direction_feature], y[:,:,self.model.direction_feature], output[:,:,self.model.target_feature], y[:,:,self.model.target_feature])
+        self.log("val_loss", loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
+        return dict(
+            loss=loss,
+            log=dict(
+                train_loss=loss
+            )
+        )
+
+    def predict_step(self, batch, batch_idx, dataloader_idx=0):
+        x = batch[0].squeeze(1)
+        y = batch[1].squeeze(1)
+
+        output = self.model(x, y[:,:-1,:])
+        return output
