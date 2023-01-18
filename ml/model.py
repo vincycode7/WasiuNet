@@ -378,19 +378,14 @@ class WasiuNetTrainer(pl.LightningModule):
 
         # Compute the multi-label loss
         multi_label_loss = multi_label_loss_fn(multi_label_pred.float(), multi_label_target.float())
-        print(f"multi_label_loss: {multi_label_loss}") 
 
         # Compute the regression loss
-        regression_loss = regression_loss_fn(regression_pred.float(), regression_target.float()) # get loss
-        print(f"regression_loss before scale: {regression_loss}") 
-        print(f"scale value: {regression_pred.shape[1]}")     
+        regression_loss = regression_loss_fn(regression_pred.float(), regression_target.float()) # get loss  
         
         # Create a tensor for the scaling factor with the correct data type
-        scaling_factor = torch.tensor(regression_pred.shape[1], dtype=torch.float)
+        # scaling_factor = regression_pred.shape[1]
 
-        regression_loss = torch.div(regression_loss, scaling_factor) # scale data
-        print(f"regression_loss after scale: {regression_loss}") 
-
+        # regression_loss = regression_loss / scaling_factor # scale data
         
         # Combine the two losses with the specified weights
         combined_loss = self.multi_label_loss_weight * multi_label_loss + self.regression_loss_weight * regression_loss
