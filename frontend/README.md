@@ -17,10 +17,15 @@ Step 2 - Install dependencies
 
 Step 3 - Run project
 
-- Option 1 (DockerFile)
+- Option 1 (docker-compose)
 
-    - Run `sudo docker run -p 8501:8501 frontend:latest` or `docker run -d -p 8501:8501 --name wasiufrontend frontend:latest` to run in background
+    - Run `docker-compose build`
+    - Run `docker-compose start` or `docker-compose up -d` to run in background
 
-- Option 2 (Development)
+- Option 2 (DockerFile)
+
+    - Run `sudo docker run -p 80:8501 frontend:latest` or `docker run -d -p 80:8501 --name wasiufrontend frontend:latest` to run in background
+
+- Option 3 (Development)
 
     - Run `streamlit run app.py`
