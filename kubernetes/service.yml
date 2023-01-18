@@ -4,13 +4,18 @@ metadata:
   name: frontend-service
 spec:
   selector:
-    app: microservices
-    name: frontend
+    app: wasiufrontend:2.0
+    name: wasiufrontend:2.0
   ports:
-  - name: http
-    port: 80
-    targetPort: 80
+  - port: 80
+    targetPort: 8501
+    nodePort: 30007
   type: LoadBalancer
+  # ports:
+  # - name: http
+  #   port: 80
+  #   targetPort: 80
+  # type: LoadBalancer
 # ---
 # apiVersion: v1
 # kind: Service
