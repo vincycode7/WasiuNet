@@ -19,7 +19,7 @@ Step 3 - Run project
 
 - Option 1 (DockerFile)
 
-    - Run `sudo docker run -p 8501:8501 frontend:latest`
+    - Run `sudo docker run -p 8501:8501 frontend:latest` or `docker run -d -p 8501:8501 --name wasiufrontend frontend:latest` to run in background
 
 - Option 2 (Development)
 
