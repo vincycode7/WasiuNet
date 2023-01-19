@@ -15,21 +15,23 @@ spec:
         app: wasiunet-microservices
     spec:
       containers:
-      - name: frontend
-        image: <docker_registry>/frontend:latest
-        imagePullPolicy: Always
+      - name: wasiufrontend
+        image: wasiufrontend:2.0
+        # imagePullPolicy: Always # will always pull even if it is present locally
+        imagePullPolicy: IfNotPresent # will pull image if not present locally
+        # imagePullPolicy: Never # This will instruct not to pull image but use local
         ports:
-        - containerPort: 80
+        - containerPort: 8501
         readinessProbe:
           httpGet:
             path: /healthz
-            port: 80
+            port: 8501
           initialDelaySeconds: 5
           periodSeconds: 10
         livenessProbe:
           httpGet:
             path: /healthz
-            port: 80
+            port: 8501
           initialDelaySeconds: 15
           periodSeconds: 20
       # - name: ml
