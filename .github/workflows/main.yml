@@ -10,8 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        microservice: [frontend]
-        # [], auth, ml, safepoint_tracker]
+        microservice: [frontend, auth, ml, safepoint_tracker]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
@@ -29,7 +28,7 @@ jobs:
         export GIT_SHA=${{github.sha}}
         export TIMESTAMP=$(date +%s)
         docker build -t ${{ matrix.microservice }}:${{VERSION}}_${{BUILD_NUMBER}}_${{TIMESTAMP}}_${{GIT_SHA}} .
-        # if ! docker run --rm ${{ matrix.microservice }}:${{VERSION}}_${{BUILD_NUMBER}}_${{TIMESTAMP}}_${{GIT_SHA}} pytest; then exit 1; fi
+        if ! docker run --rm ${{ matrix.microservice }}:${{VERSION}}_${{BUILD_NUMBER}}_${{TIMESTAMP}}_${{GIT_SHA}} pytest; then exit 1; fi
 
       # docker build -t ${{ matrix.microservice }}:${{version}}_${{build_number}}_${{timestamp}}_${{git_sha}} .
       # if ! docker run --rm ${{ matrix.microservice }}:${{version}}_${{build_number}}_${{timestamp}}_${{git_sha}} pytest; then exit 1; fi
