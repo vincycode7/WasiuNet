@@ -1,7 +1,3 @@
-
-# Here's a GitHub Actions workflow file (main.yml) that builds, tests and pushes four microservice container Dockerfiles, where each Dockerfile is located in its own folder
-# docker build -t ${{ matrix.microservice }}:$VERSION-$BUILD_NUMBER-$TIMESTAMP-$GIT_SHA .
-
 name: Build, Test and Push Microservices
 
 on:
@@ -32,8 +28,8 @@ jobs:
         cd ${{ matrix.microservice }}
         export GIT_SHA=${{github.sha}}
         export TIMESTAMP=$(date +%s)
-        docker build -t ${{ matrix.microservice }:${version}_${build_number}_${timestamp}_${git_sha}
-        if ! docker run --rm ${{ matrix.microservice }:${version}_${build_number}_${timestamp}_${git_sha} pytest; then exit 1; fi
-        echo ${{ secrets.DOCKER_USERNAME }}
-        echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-        docker push <your_docker_registry>/${{ matrix.microservice }}:$VERSION-$BUILD_NUMBER-$TIMESTAMP-$GIT_SHA
+        docker build -t ${{ matrix.microservice }}:${{version}}_${{build_number}}_${{timestamp}}_${{git_sha}} .
+        if ! docker run --rm ${{ matrix.microservice }}:${{version}}_${{build_number}}_${{timestamp}}_${{git_sha}} pytest; then exit 1; fi
+# echo ${{ secrets.DOCKER_USERNAME }}
+# echo ${{ secrets.DOCKER_PASSWORD }} | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+# docker push <your_docker_registry>/${{ matrix.microservice }}:${{version}}_${{build_number}}_${{timestamp}}_${{git_sha}}
