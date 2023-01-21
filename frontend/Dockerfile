@@ -39,8 +39,7 @@ COPY . /app
 EXPOSE 8501
 
 # Healthcheck for the Streamlit server
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
-    CMD wget --quiet --tries=1 --spider http://localhost:8501/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD curl --fail http://localhost:8501/healthz || exit 1
 
 # Start the Streamlit server
 CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]

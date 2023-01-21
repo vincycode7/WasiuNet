@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        microservice: [frontend]
-        # [, auth, ml, safepoint_tracker]
+        microservice: [frontend, ml]
+        # [, auth, safepoint_tracker]
     steps:
     - name: Checkout code
       uses: actions/checkout@v2
