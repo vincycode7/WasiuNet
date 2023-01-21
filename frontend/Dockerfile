@@ -27,7 +27,7 @@ RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 RUN apt-get update && apt-get install -y curl unzip
 RUN wget https://chromedriver.storage.googleapis.com/110.0.5481.30/chromedriver_linux64.zip
 RUN unzip chromedriver_linux64.zip
-RUN sudo mv chromedriver /usr/local/bin
+RUN mv chromedriver /usr/local/bin
 
 RUN apt-get install -y xvfb
 
