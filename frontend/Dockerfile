@@ -25,6 +25,7 @@ RUN tar -xvzf geckodriver-v0.27.0-linux64.tar.gz
 RUN chmod +x geckodriver
 RUN mv geckodriver /usr/local/bin/
 
+RUN apt-get install -y xvfb
 
 # Copy the application files
 COPY . /app
