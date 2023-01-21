@@ -53,10 +53,6 @@ def streamlit_server():
         stdout = stdout_file.read().decode()
         stderr = stderr_file.read().decode()
 
-def test_server(streamlit_server):
-    response = requests.get('http://localhost:8501')
-    assert 200 == response.status_code
-
 # @pytest.fixture
 # def capsys():
 #     """Return capsys fixture"""
@@ -70,9 +66,21 @@ def test_server(streamlit_server):
 #     stdout = sys.stdout.read()
 #     stderr = sys.stderr.read()
 
+def test_app_delay(streamlit_server):
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    time.sleep(3)
+    session = HTMLSession()
+    response = session.get('http://localhost:8501')
+    response.html.render()
+    assert True == True
+    
+def test_server(streamlit_server):
+    response = requests.get('http://localhost:8501')
+    assert 200 == response.status_code
+    
 def test_app_nameerror(streamlit_server):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
-    time.sleep(1)
+    # time.sleep(1)
     session = HTMLSession()
     response = session.get('http://localhost:8501')
     response.html.render()
@@ -81,12 +89,11 @@ def test_app_nameerror(streamlit_server):
     stderr_file.seek(0)
     stdout = stdout_file.read().decode()
     stderr = stderr_file.read().decode()
-    assert True==True
-    # assert "NameError" not in stderr
+    assert "NameError" not in stderr
     
-def test_app_syntaxerror(capsys, streamlit_server):
+def test_app_syntaxerror(streamlit_server):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
-    time.sleep(1)
+    # time.sleep(1)
     session = HTMLSession()
     response = session.get('http://localhost:8501')
     stdout_file, stderr_file = streamlit_server
