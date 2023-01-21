@@ -12,6 +12,7 @@ RUN pip3 install selenium
 
 RUN apt-get update && apt-get install -y software-properties-common
 
+RUN apt-get install -y unzip
 # RUN apt-get install -y firefox-esr
 
 # Add the Mozilla Firefox release PPA
