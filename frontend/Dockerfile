@@ -17,7 +17,13 @@ RUN apt-get update && apt-get install -y software-properties-common
 # RUN apt-add-repository -y ppa:mozillateam/firefox-next
 
 # Update the package list and install Firefox and the geckodriver package
-RUN apt-get update && apt-get install -y firefox-esr geckodriver
+RUN apt-get update && apt-get install -y firefox-esr
+
+# Install the geckodriver for Firefox
+RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.27.0/geckodriver-v0.27.0-linux64.tar.gz
+RUN tar -xvzf geckodriver-v0.27.0-linux64.tar.gz
+RUN chmod +x geckodriver
+RUN mv geckodriver /usr/local/bin/
 
 
 # Copy the application files
