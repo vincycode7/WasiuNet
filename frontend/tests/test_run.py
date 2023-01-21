@@ -72,6 +72,7 @@ def test_app_delay(streamlit_server):
     session = HTMLSession()
     response = session.get('http://localhost:8501')
     response.html.render()
+    
     assert True == True
     
 def test_server(streamlit_server):
