@@ -25,7 +25,14 @@ RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 # Install ChromeDriver
 # Automatically download the latest chrome driver
 RUN apt-get update && apt-get install -y curl unzip
-RUN wget https://chromedriver.storage.googleapis.com/109.0.5414.74/chromedriver_linux64.zip
+
+# Determine the version of Chrome installed
+RUN chrome_version=$(chrome --version)
+
+# Extract the version number from the output
+RUN chrome_version=${chrome_version:14:6}
+
+RUN wget https://chromedriver.storage.googleapis.com/$chrome_version/chromedriver_linux64.zip
 RUN unzip chromedriver_linux64.zip
 RUN mv chromedriver /usr/local/bin
 
