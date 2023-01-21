@@ -4,18 +4,16 @@ COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
 
 # Install Firefox and Selenium dependencies
-RUN apt-get update && \
-    apt-get install -y firefox && \
-    apt-get install -y wget
+RUN apt-get update && apt-get install -y wget
 
 # Install Selenium
 RUN pip3 install selenium
 
-# Download and install the geckodriver for Firefox
-RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz && \
-    tar -xvzf geckodriver-v0.26.0-linux64.tar.gz && \
-    chmod +x geckodriver && \
-    mv geckodriver /usr/local/bin/
+# Install the geckodriver for Firefox
+RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
+RUN tar -xvzf geckodriver-v0.26.0-linux64.tar.gz
+RUN chmod +x geckodriver
+RUN mv geckodriver /usr/local/bin/
 
 # Copy the application files
 COPY . /app
