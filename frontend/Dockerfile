@@ -1,4 +1,5 @@
 FROM python:3.10.9-slim
+ENV PATH="/usr/local/bin:$PATH"
 WORKDIR /app
 COPY requirements.txt ./requirements.txt
 RUN pip install -r requirements.txt
@@ -24,6 +25,7 @@ RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.27.0/geckod
 RUN tar -xvzf geckodriver-v0.27.0-linux64.tar.gz
 RUN chmod +x geckodriver
 RUN mv geckodriver /usr/local/bin/
+RUN chmod +x /usr/local/bin/geckodriver
 
 RUN apt-get install -y xvfb
 
