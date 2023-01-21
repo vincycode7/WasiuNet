@@ -11,14 +11,14 @@ RUN pip3 install selenium
 
 RUN apt-get update && apt-get install -y software-properties-common
 
+RUN apt-get install -y firefox-esr
+
 # Add the Mozilla Firefox release PPA
-RUN apt-add-repository -y ppa:mozillateam/firefox-next
+# RUN apt-add-repository -y ppa:mozillateam/firefox-next
 
 # Update the package list and install Firefox and the geckodriver package
-RUN apt-get update && apt-get install -y firefox-esr geckodriver
+# RUN apt-get update && apt-get install -y firefox-esr geckodriver
 
-# # Install Xvfb to run Firefox in headless mode
-# RUN apt-get install -y xvfb
 
 # Copy the application files
 COPY . /app
