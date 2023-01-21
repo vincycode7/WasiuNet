@@ -11,13 +11,13 @@ RUN pip3 install selenium
 
 RUN apt-get update && apt-get install -y software-properties-common
 
-RUN apt-get install -y firefox-esr
+# RUN apt-get install -y firefox-esr
 
 # Add the Mozilla Firefox release PPA
 # RUN apt-add-repository -y ppa:mozillateam/firefox-next
 
 # Update the package list and install Firefox and the geckodriver package
-# RUN apt-get update && apt-get install -y firefox-esr geckodriver
+RUN apt-get update && apt-get install -y firefox-esr geckodriver
 
 
 # Copy the application files
