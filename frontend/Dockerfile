@@ -17,15 +17,13 @@ RUN apt-get update && apt-get install -y software-properties-common
 # Add the Mozilla Firefox release PPA
 # RUN apt-add-repository -y ppa:mozillateam/firefox-next
 
-# Update the package list and install Firefox and the geckodriver package
-RUN apt-get update && apt-get install -y firefox-esr
+# Install Chrome
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
+RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 
-# Install the geckodriver for Firefox
-RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.27.0/geckodriver-v0.27.0-linux64.tar.gz
-RUN tar -xvzf geckodriver-v0.27.0-linux64.tar.gz
-RUN chmod +x geckodriver
-RUN mv geckodriver /usr/local/bin/
-RUN chmod +x /usr/local/bin/geckodriver
+# Install ChromeDriver
+RUN wget https://chromedriver.storage.googleapis.com/83.0.4103.39/chromedriver_linux64.zip
+RUN unzip chromedriver_linux64.zip -d /usr/local/bin
 
 RUN apt-get install -y xvfb
 
