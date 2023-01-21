@@ -11,6 +11,8 @@ import subprocess
 import requests
 import time
 from selenium import webdriver
+from pytest_xvfb import xvfb
+from xvfbwrapper import Xvfb
 
 @pytest.fixture(scope='session')
 def streamlit_server():
@@ -26,11 +28,16 @@ def streamlit_server():
     
 @pytest.fixture(scope='session')
 def browser():
+    vdisplay = Xvfb()
+    vdisplay.start()
     options = webdriver.FirefoxOptions()
     options.add_argument("--headless")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
     driver = webdriver.Firefox(options=options)
     yield driver
     driver.close()
+    vdisplay.stop()
 
 def test_app_delay(streamlit_server):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
