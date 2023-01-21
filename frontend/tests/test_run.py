@@ -30,9 +30,11 @@ def streamlit_server():
 def browser():
     vdisplay = Xvfb()
     vdisplay.start()
-    options = webdriver.FirefoxOptions()
-    options.add_argument("--headless")
-    driver = webdriver.Firefox(options=options)
+    options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    driver = webdriver.Chrome(chrome_options=options)
     yield driver
     driver.close()
     vdisplay.stop()
