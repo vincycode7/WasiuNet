@@ -7,9 +7,9 @@ name = "pypi"
 streamlit = "*"
 pytest = "*"
 bs4 = "*"
-requests-html = "*"
 websockets = "*"
 asyncio = "*"
+selenium = "*"
 
 [dev-packages]
 
