@@ -9,11 +9,11 @@ RUN apt-get update && apt-get install -y wget
 # Install Selenium
 RUN pip3 install selenium
 
-# Install the geckodriver for Firefox
-RUN wget https://github.com/mozilla/geckodriver/releases/download/v0.26.0/geckodriver-v0.26.0-linux64.tar.gz
-RUN tar -xvzf geckodriver-v0.26.0-linux64.tar.gz
-RUN chmod +x geckodriver
-RUN mv geckodriver /usr/local/bin/
+# Add the Mozilla Firefox release PPA
+RUN apt-add-repository -y ppa:mozillateam/firefox-next
+
+# Update the package list and install Firefox and the geckodriver package
+RUN apt-get update && apt-get install -y firefox-esr geckodriver
 
 # Copy the application files
 COPY . /app
