@@ -81,7 +81,7 @@ def test_server(streamlit_server):
     
 def test_app_nameerror(streamlit_server):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
-    # time.sleep(1)
+    time.sleep(1)
     session = HTMLSession()
     response = session.get('http://localhost:8501')
     response.html.render()
@@ -94,7 +94,7 @@ def test_app_nameerror(streamlit_server):
     
 def test_app_syntaxerror(streamlit_server):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
-    # time.sleep(1)
+    time.sleep(1)
     session = HTMLSession()
     response = session.get('http://localhost:8501')
     stdout_file, stderr_file = streamlit_server
