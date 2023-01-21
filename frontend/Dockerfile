@@ -23,8 +23,12 @@ RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.d
 RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
 
 # Install ChromeDriver
-RUN wget https://chromedriver.storage.googleapis.com/83.0.4103.39/chromedriver_linux64.zip
-RUN unzip chromedriver_linux64.zip -d /usr/local/bin
+# Automatically download the latest chrome driver
+RUN apt-get update && apt-get install -y curl unzip
+RUN latest_version=$(curl https://chromedriver.chromium.org/home | grep -Po 'ChromeDriver \K\d+.\d+.\d+')
+RUN wget https://chromedriver.storage.googleapis.com/$latest_version/chromedriver_linux64.zip
+RUN unzip chromedriver_linux64.zip
+RUN sudo mv chromedriver /usr/local/bin
 
 RUN apt-get install -y xvfb
 
