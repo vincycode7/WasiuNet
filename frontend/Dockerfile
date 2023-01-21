@@ -19,8 +19,10 @@ RUN apt-get install -y unzip
 # RUN apt-add-repository -y ppa:mozillateam/firefox-next
 
 # Install Chrome
-RUN wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb
-RUN dpkg -i google-chrome-stable_current_amd64.deb; apt-get -fy install
+RUN sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add
+RUN apt-get update
+RUN apt-get install google-chrome-stable
 
 # Install ChromeDriver
 # Automatically download the latest chrome driver
