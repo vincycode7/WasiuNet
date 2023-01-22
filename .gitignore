@@ -1,5 +1,7 @@
 # Program files
 code_structure.env
+google-chrome-stable_current_amd64.deb
+.vscode
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
