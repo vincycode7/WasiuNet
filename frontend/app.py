@@ -25,6 +25,35 @@ trade_date = col[2].date_input("start safe entry search - date")
 trade_time = col[3].time_input("start safe entry search - time")
 col = col[4].select_slider("Auto safe trade",["Off","On"])
 
+async def authenticate_user(session, username, password):
+    """
+    Authenticate a user with the auth service
+    :param session: aiohttp.ClientSession - an aiohttp session object
+    :param username: str - the user's username
+    :param password: str - the user's password
+    :return: dict - the auth service's response
+    """
+    auth_url = 'http://auth-service:5000/authenticate'
+    auth_data = {'username': username, 'password': password}
+    async with session.post(auth_url, json=auth_data) as auth_response:
+        auth_json = await auth_response.json()
+    return auth_json
+
+async def get_prediction(session, input_data, auth_token):
+    """
+    Get a prediction from the ML service
+    :param session: aiohttp.ClientSession - an aiohttp session object
+    :param input_data: str - the input data for the prediction
+    :param auth_token: str - the auth token to be used for authentication
+    :return: dict - the ML service's response
+    """
+    ml_url = 'http://ml-service:5000/predict'
+    headers = {'Authorization': auth_token}
+    ml_data = {'input': input_data}
+    async with session.post(ml_url, json=ml_data, headers=headers) as ml_response:
+        ml_json = await ml_response.json()
+    return ml_json
+
 # Send input to ml microsevice with inputs
 # user_token, asset, date, time,run_prediction_flag endpoint and either get just data or data and prediction 
 
