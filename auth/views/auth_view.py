@@ -1,6 +1,10 @@
 from flask import jsonify
 from controllers.auth_controller import Register, Login, GetToken, VerifyToken, RefreshToken, RevokeToken, HealthCheck
 from flask_restful import Api
+from flask_restful import Resource
+from flask import request
+from models.schemas import RegisterSchema
+from models.auth_model import AuthModel
 
 class AuthView:
     def __init__(self, app):

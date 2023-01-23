@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 import jwt
 from pymongo import MongoClient
 from configs import MONGO_URL, MONGO_USERNAME, MONGO_PASSWORD, SECRET_KEY, connect_to_mongo
-
+from utils import verify_token, create_token
 app = Flask(__name__)
 app.config["MONGODB_SETTINGS"] = {'host': MONGO_URL}
 app.config["SECRET_KEY"] = SECRET_KEY
@@ -19,7 +19,9 @@ class User(db.Document):
 
 class AuthModel:
     def __init__(self):
+        from schemas import UserSchema
         # Connect to the "auth_db" database and the "revoked_tokens" collection
+        self.user_schema = UserSchema()
         self.db = connect_to_mongo()
         self.users = self.db["users"]
         self.revoked_tokens = self.db["revoked_tokens"]
@@ -40,18 +42,25 @@ class AuthModel:
         else:
             return {'status': 'error', 'message': 'Invalid email or password.'}
 
-    def validate_credentials(self, username, password):
+    def get_user_by_username(self, username):
+        return self.users.find_one({'username': username})
+    
+    def validate_reg_input(self, data):
+        if data is None:
+            return {'error': 'No data provided.'}, 400
+        if 'email' not in data or 'password' not in data:
+            return {'error': 'Incomplete data provided.'}, 400
+        return None
+        
+    def validate_input(self, username, password):
         # Validate the user's credentials
         if not username or not password:
             return {'status': 'error','error': 'Username and password are required.'}, 400
-        user = self.check_credentials(username, password)
-        if not username:
-            return {'status': 'error', 'message': 'Invalid email or password.'}, 401
         return None
         
     def check_credentials(self, username, password):
         """Check if the given username and password match a user in the database"""
-        user = self.users.find_one({'username': username})
+        user = self.get_user_by_username(username=username)
         if user:
             if bcrypt.checkpw(password.encode('utf-8'), user.get('password').encode('utf-8')):
                 return user
@@ -64,14 +73,14 @@ class AuthModel:
     
     def check_if_token_is_revoked(self, token):
         """Check if the given token has been revoked"""
-        payload = utils.verify_token(token)
+        payload = verify_token(token)
         if payload['username'] in self.revoked_tokens:
             return True
         return False
 
     def revoke_token(self, token):
         """Insert the given token into the revoked_tokens collection"""
-        payload = utils.verify_token(token)
+        payload = verify_token(token)
         if self.revoked_tokens.find_one({'username': payload['username']}):
             return {'error': 'Token has already been revoked.'}, 401
         self.revoked_tokens.insert_one({'username': payload['username']})

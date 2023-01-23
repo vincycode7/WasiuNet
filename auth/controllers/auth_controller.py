@@ -3,11 +3,19 @@ from flask_restful import Api, Resource
 from datetime import datetime, timedelta
 from utils import create_token, verify_token
 from models.auth_model import AuthModel
+from models.schemas import RegisterSchema
 
 class Register(Resource):
     def post(self):
-        data = request.get_json()
-        return AuthModel.register(data["email"], data["password"])
+        # validate input
+        schema = RegisterSchema()
+        errors = schema.validate(request.get_json())
+        if errors:
+            return {"error": errors}, 400
+
+        # register user
+        data = schema.load(request.get_json())
+        return AuthModel.register(data.get("email"), data.get("password"))
 
 class Login(Resource):
     def post(self):
