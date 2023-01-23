@@ -1,7 +1,8 @@
 from mongoengine import Document, StringField, DateTimeField
+from utils.prediction_utils import run_prediction
 from datetime import datetime
 
-class Prediction(Document):
+class PredictionModel(Document):
     asset = StringField(required=True)
     date = StringField(required=True)
     time = StringField(required=True)
@@ -10,9 +11,9 @@ class Prediction(Document):
 
     meta = {'collection': 'predictions'}
     
-    def run_prediction(date, time, asset):
+    def run_prediction(self,date, time, asset):
         # code to run prediction using the provided date, time and asset
-        prediction = "Some predicted value"
+        prediction = run_prediction(data, time, asset) #"Some predicted value"
         return prediction
 
     def save_prediction(prediction, date, time, asset):

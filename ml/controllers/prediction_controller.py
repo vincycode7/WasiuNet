@@ -1,31 +1,19 @@
 from flask_restful import Resource
 from flask import request, jsonify
-from marshmallow import ValidationError
-from schemas.prediction_schema import PredictionSchema
-from utils.prediction_utils import run_prediction
-            
-class PredictionController(Resource):
-    def get(self):
-        # Verify the token
-        auth_header = request.headers.get("Authorization")
-        if auth_header:
-            token = auth_header.split(" ")[1]
-        else:
-            return {'error': 'Authorization header not provided'}, 401
-        # if not verify_token(token): # run this verification on the auth verify_token endpoint
-        #     return {'error': 'Invalid or expired token'}, 401
+from flask import make_response
+from flasgger import swag_from
+from marshmallow import fields
 
-        # Validate and parse the input data
-        data = request.args.to_dict()
-        try:
-            data = PredictionSchema().load(data)
-        except ValidationError as err:
-            return {'error': err.messages}, 400
-
-        # Run the prediction and return the output
-        prediction = run_prediction(data['date'], data['time'], data['asset'])
-        return {'prediction': prediction}
+class PredictionController:
+    def __init__(self, model):
+        self.model = model
+        
+    @swag_from("template/predict_swagger.yml")
+    def predict(self, data):
+        return self.model.predict(data)
     
 class HealthCheckController(Resource):
-    def get(self):
-        return jsonify({"status":"UP"}), 200
+    @swag_from("template/healthcheck_swagger.yml")
+    def get_health_status(self):
+        response = {"status":"UP"}
+        return response
