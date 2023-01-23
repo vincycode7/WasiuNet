@@ -1,10 +1,9 @@
 from flask_restful import Resource
 from flask import request
 from marshmallow import ValidationError
-from ...schemas import PredictionSchema
-from ...models import Prediction
-from ...utils import verify_token
-
+from schemas.prediction_schema import PredictionSchema
+from utils.prediction_utils import verify_token, run_prediction
+            
 class PredictionController(Resource):
     def get(self):
         # Verify the token
@@ -24,5 +23,9 @@ class PredictionController(Resource):
             return {'error': err.messages}, 400
 
         # Run the prediction and return the output
-        prediction = Prediction.run_prediction(data['date'], data['time'], data['asset'])
+        prediction = run_prediction(data['date'], data['time'], data['asset'])
         return {'prediction': prediction}
+    
+class HealthCheckController(Resource):
+    def get(self):
+        return jsonify(status="UP"), 200

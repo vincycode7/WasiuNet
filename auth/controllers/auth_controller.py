@@ -5,7 +5,7 @@ from utils import create_token, verify_token
 from models.auth_model import AuthModel
 from models.schemas import RegisterSchema
 
-class Register(Resource):
+class RegisterController(Resource):
     def post(self):
         # validate input
         schema = RegisterSchema()
@@ -17,12 +17,12 @@ class Register(Resource):
         data = schema.load(request.get_json())
         return AuthModel.register(data.get("email"), data.get("password"))
 
-class Login(Resource):
+class LoginController(Resource):
     def post(self):
         data = request.get_json()
         return AuthModel.login(data["email"], data["password"])
 
-class GetToken(Resource):
+class GetTokenController(Resource):
     def post(self):
         # Get the user's credentials from the request
         credentials = request.json
@@ -39,12 +39,12 @@ class GetToken(Resource):
         else:
             return {'error': 'Invalid username or password.'}, 401
 
-class HealthCheck(Resource):
+class HealthCheckController(Resource):
     def get(self):
         return jsonify(status="UP"), 200
     
 
-class VerifyToken(Resource):
+class VerifyTokenController(Resource):
     def post(self):
         auth_header = request.headers.get('Authorization')
         if auth_header:
@@ -58,7 +58,7 @@ class VerifyToken(Resource):
         else:
             return {'error': 'Authorization header is missing.'}, 401
 
-class RefreshToken(Resource):
+class RefreshTokenController(Resource):
     def post(self):
         auth_header = request.headers.get('Authorization')
         if auth_header:
@@ -79,7 +79,7 @@ class RefreshToken(Resource):
             return {'error': 'Authorization header is missing.'}, 401
         
         
-class RevokeToken(Resource):
+class RevokeTokenController(Resource):
     def post(self):
         auth_header = request.headers.get('Authorization')
         if auth_header:
