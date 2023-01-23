@@ -1,21 +1,14 @@
-from flask import jsonify, make_response
-from app.controllers.auth_controller import auth_blueprint
+from flask import jsonify
+from controllers.auth_controller import Register, Login, GetToken, VerifyToken, RefreshToken, RevokeToken, HealthCheck
+from flask_restful import Api
 
 class AuthView:
-    @staticmethod
-    def register():
-        """
-        Handle the registration of a new user.
-        """
-        data = request.get_json()
-        response = auth_blueprint.register(data)
-        return make_response(jsonify(response), 200)
-
-    @staticmethod
-    def login():
-        """
-        Handle the login of a user.
-        """
-        data = request.get_json()
-        response = auth_blueprint.login(data)
-        return make_response(jsonify(response), 200)
+    def __init__(self, app):
+        self.api = Api(app)
+        self.api.add_resource(Register, '/register')
+        self.api.add_resource(Login, '/login')
+        self.api.add_resource(GetToken, '/get_token')
+        self.api.add_resource(VerifyToken, '/verify_token')
+        self.api.add_resource(RefreshToken, '/refresh_token')
+        self.api.add_resource(RevokeToken, '/revoke_token')
+        self.api.add_resource(HealthCheck, '/health')
