@@ -98,7 +98,3 @@ class RevokeTokenController(Resource):
                 return payload
         else:
             return {'error': 'Authorization header is missing.'}, 401
-
-
-
-
