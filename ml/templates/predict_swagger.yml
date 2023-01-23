@@ -1,0 +1,31 @@
+swagger: "2.0"
+info:
+  title: Prediction
+  description: Predict something
+  version: "1.0"
+paths:
+  /predict:
+    post:
+      summary: Predict something
+      parameters:
+        - name: data
+          in: body
+          description: data for prediction
+          required: true
+          schema:
+            type: object
+            properties:
+              feature1:
+                type: number
+              feature2:
+                type: number
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  result:
+                    type: number

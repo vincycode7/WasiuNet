@@ -1,0 +1,14 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "My Flask App",
+        "description": "API documentation for my Flask app",
+        "version": "1.0.0"
+    },
+    "basePath": "/",
+    "schemes": [
+        "http"
+    ],
+    "paths": {
+    }
+}

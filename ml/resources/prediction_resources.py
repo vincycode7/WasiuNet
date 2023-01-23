@@ -11,12 +11,16 @@ from flask import jsonify, request, make_response
 from flask_restful import Resource
 from controllers.prediction_controller import PredictionController
 from models.prediction_model import PredictionModel
+from schemas.prediction_schema import PredictionSchema
 import requests
+from flasgger import swag_from
 
 class PredictionResource(Resource):
     def __init__(self):
         self.controller = PredictionController(PredictionModel())
+        self.schema = PredictionSchema()
     
+    @swag_from('../templates/predict_swagger.yml')
     def post(self):
         # Verify the token
         auth_header = request.headers.get("Authorization")
@@ -26,25 +30,26 @@ class PredictionResource(Resource):
             return {'error': 'Authorization header not provided'}, 401
         
         # Send the token to the auth service
-        # token = request.headers.get("Authorization")
-        # auth_response = requests.post("http://auth-service.com/verify_token", headers={"Authorization": token})
+        token = request.headers.get("Authorization")
+        auth_response = requests.post("http://auth-service.com/verify_token", headers={"Authorization": token})
 
         # Validate and parse the input data
         data = request.args.to_dict()
         try:
-            data = PredictionSchema().load(data)
+            data = self.schema.load(data)
         except ValidationError as err:
             return {'error': err.messages}, 400
 
         # Run the prediction and return the output    
         prediction = self.controller.predict(data)
         
-        return jsonify({"prediction": prediction, "auth_status": auth_response.json()})
+        return make_response(jsonify({"prediction": prediction, "auth_status": auth_response.json()}),200)
     
 class HealthCheckResource(Resource):
     def __init__(self):
         self.controller = HealthCheckController()
         
+    @swag_from('../templates/healthcheck_swagger.yml')
     def get(self):
         # data = request.get_json()
         # prediction = self.controller.predict(data)

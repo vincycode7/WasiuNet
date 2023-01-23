@@ -1,6 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api
-from views.prediction_view import PredictionResource, HealthCheckResource
+from resources.prediction_resources import PredictionResource, HealthCheckResource
 
 pred_bp = Blueprint("predict", __name__)
 api = Api(pred_bp)
