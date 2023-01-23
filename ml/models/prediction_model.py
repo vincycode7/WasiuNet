@@ -1,4 +1,5 @@
 from mongoengine import Document, StringField, DateTimeField
+from datetime import datetime
 
 class Prediction(Document):
     asset = StringField(required=True)

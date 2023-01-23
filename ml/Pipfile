@@ -7,6 +7,9 @@ name = "pypi"
 flask = "*"
 pytest = "*"
 requests = "*"
+flask-restful = "*"
+marshmallow = "*"
+mongoengine = "*"
 
 [dev-packages]
 

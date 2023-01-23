@@ -1,8 +1,8 @@
 from flask_restful import Resource
-from flask import request
+from flask import request, jsonify
 from marshmallow import ValidationError
 from schemas.prediction_schema import PredictionSchema
-from utils.prediction_utils import verify_token, run_prediction
+from utils.prediction_utils import run_prediction
             
 class PredictionController(Resource):
     def get(self):
@@ -12,8 +12,8 @@ class PredictionController(Resource):
             token = auth_header.split(" ")[1]
         else:
             return {'error': 'Authorization header not provided'}, 401
-        if not verify_token(token):
-            return {'error': 'Invalid or expired token'}, 401
+        # if not verify_token(token): # run this verification on the auth verify_token endpoint
+        #     return {'error': 'Invalid or expired token'}, 401
 
         # Validate and parse the input data
         data = request.args.to_dict()
@@ -28,4 +28,4 @@ class PredictionController(Resource):
     
 class HealthCheckController(Resource):
     def get(self):
-        return jsonify(status="UP"), 200
+        return jsonify({"status":"UP"}), 200
