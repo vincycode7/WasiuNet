@@ -1,8 +1,8 @@
 import os, sys, aiohttp, asyncio
 import streamlit as st
-from config.config import ML_BASE_URL, ML_PORT
+from config.config import PREDICT_ENDPOINT
 from datetime import datetime
-
+from aiohttp.client_exceptions import ClientConnectorError
 # from  data_eng import data_util
 # sys.path.append(os.path.abspath(os.path.join(os.path.abspath(''), '..'))) # 
 
@@ -15,13 +15,15 @@ async def get_prediction(session, input_data, auth_token=None):
     # :param session: aiohttp.ClientSession - an aiohttp session object
     # :return: dict - the ML service's response
     # """
-    ml_url = ML_BASE_URL+":"+str(ML_PORT)+"/predict"
     # headers = {'Authorization': auth_token}
     ml_data = {'input': input_data}
     # async with session.post(ml_url, json=ml_data, headers=headers) as ml_response:
-    async with session.post(ml_url, json=ml_data) as ml_response:
-        ml_json = await ml_response.json()
-    return ml_json
+    try:
+        async with session.post(PREDICT_ENDPOINT, json=ml_data) as ml_response:
+            ml_json = await ml_response.json()
+    except ClientConnectorError as e:
+        return {"error":"Internal Server Error","message":f"ClientConnectorError occured, check if ml service is running. {e}"}, 500
+    return ml_json, 200
 
 # @st.cache
 def get_ml_prediction_streamlit(input_data):
@@ -55,10 +57,16 @@ st.set_page_config(
     #     'About': "# This is a header. This is an *extremely* cool app!"
     # }
 )
+
 input_data = get_data_streamlit(canvas=st)
 st.write("out",input_data)
-ml_res = asyncio.run(get_ml_prediction_streamlit(input_data=input_data))
-st.write(ml_res)
+ml_res, status = asyncio.run(get_ml_prediction_streamlit(input_data=input_data))
+
+if status!=200:
+    st.error("An error occurred while connecting to the ML Predict Service Endpoint: " + str(ml_res['error']))
+else:
+    st.write(ml_res)
+    
 # st.write("ML_BASE_URL"+":"+"ML_PORT" + f"--> {ML_BASE_URL}:{ML_PORT}")
 
 # async def authenticate_user(session, username, password):

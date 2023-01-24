@@ -5,5 +5,6 @@ import os
 load_dotenv()
 
 # Load secrets
-ML_BASE_URL = os.environ.get('ML_BASE_URL')
-ML_PORT = os.environ.get('ML_PORT')
+ML_BASE_URL = os.environ.get('ML_BASE_URL',"")
+ML_PORT = os.environ.get('ML_PORT',"")
+PREDICT_ENDPOINT = ML_BASE_URL+":"+str(ML_PORT)+"/predict"
