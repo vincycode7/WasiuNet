@@ -18,6 +18,11 @@ jobs:
       with:
         ref: ${{github.sha}}
 
+    - name: Set environment variables
+      run: |
+        export ML_BASE_URL=http://127.0.0.1
+        export ML_PORT=5002
+
     - name: Load version and build number
       run: |
         export VERSION=$(grep version ${{ matrix.microservice }}/version.txt | cut -d '=' -f 2)
