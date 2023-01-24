@@ -49,14 +49,13 @@ def test_server(streamlit_server):
     response = requests.get('http://localhost:8501')
     assert 200 == response.status_code
     
-def test_app_nameerror(streamlit_server, browser):
+def test_app_uierror(streamlit_server, browser):
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     browser.get('http://localhost:8501')
     time.sleep(3)
     assert "NameError" not in browser.page_source
-    
-def test_app_syntaxerror(streamlit_server, browser):
-    warnings.filterwarnings("ignore", category=DeprecationWarning)
-    browser.get('http://localhost:8501')
-    time.sleep(3)
+    assert "ModuleNotFoundError" not in browser.page_source
     assert "SyntaxError" not in browser.page_source
+    assert "TypeError" not in browser.page_source
+    assert "StreamlitAPIException" not in browser.page_source
+    

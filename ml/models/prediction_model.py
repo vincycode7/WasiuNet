@@ -4,16 +4,15 @@ from datetime import datetime
 
 class PredictionModel(Document):
     asset = StringField(required=True)
-    date = StringField(required=True)
-    time = StringField(required=True)
+    date_time = DateTimeField(required=True)
     prediction = StringField(required=True)
     created_at = DateTimeField(default=datetime.utcnow)
 
     meta = {'collection': 'predictions'}
     
-    def run_prediction(self,date, time, asset):
+    def run_prediction(self,datetime, asset):
         # code to run prediction using the provided date, time and asset
-        prediction = run_prediction(data, time, asset) #"Some predicted value"
+        prediction = run_prediction(datetime, asset) #"Some predicted value"
         return prediction
 
     def save_prediction(prediction, date, time, asset):

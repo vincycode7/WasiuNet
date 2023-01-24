@@ -9,8 +9,8 @@ class PredictionController:
         self.model = model
         
     @swag_from("template/predict_swagger.yml")
-    def predict(self, data):
-        return self.model.predict(data)
+    def predict(self, datetime, asset):
+        return self.model.run_prediction(datetime, asset)
     
 class HealthCheckController(Resource):
     @swag_from("template/healthcheck_swagger.yml")

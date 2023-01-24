@@ -11,6 +11,8 @@ websockets = "*"
 asyncio = "*"
 selenium = "*"
 xvfbwrapper = "*"
+python-dotenv = "*"
+aiohttp = "*"
 
 [dev-packages]
 
