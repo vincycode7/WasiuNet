@@ -4,8 +4,6 @@ from config.config import PREDICT_ENDPOINT
 from datetime import datetime
 from aiohttp.client_exceptions import ClientConnectorError
 # from  data_eng import data_util
-# sys.path.append(os.path.abspath(os.path.join(os.path.abspath(''), '..'))) # 
-
 
 async def get_prediction(session, input_data, auth_token=None):
     # """
@@ -25,13 +23,11 @@ async def get_prediction(session, input_data, auth_token=None):
         return {"error":"Internal Server Error","message":f"ClientConnectorError occured, check if ml service is running. {e}"}, 500
     return ml_json, 200
 
-# @st.cache
 def get_ml_prediction_streamlit(input_data):
     async def _get_ml_prediction_streamlit():
         async with aiohttp.ClientSession() as session:
             return await get_prediction(session, input_data)
     return _get_ml_prediction_streamlit()
-
 
 def get_data_streamlit(canvas):
     # Get inputs
