@@ -7,7 +7,7 @@ from marshmallow import fields
 class PredictionController:
     def __init__(self, model):
         self.model = model
-        
+    
     @swag_from("template/predict_swagger.yml")
     def predict(self, pred_datetime, asset):
         return self.model.run_prediction(pred_datetime, asset)

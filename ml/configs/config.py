@@ -11,7 +11,7 @@ REDIS_HOST = os.environ.get('REDIS_HOST')
 REDIS_PORT = os.environ.get('REDIS_PORT')
 REDIS_DB = os.environ.get('REDIS_DB')
 
-r = redis.Redis(host=str(REDIS_HOST), port=int(REDIS_PORT), db=REDIS_DB)
+REDIS_DB_INST = redis.Redis(host=str(REDIS_HOST), port=int(REDIS_PORT), db=REDIS_DB)
 
 # Load secrets
 SECRET_KEY = os.environ.get('APP_SECRET_KEY')  # replace with your own secret key

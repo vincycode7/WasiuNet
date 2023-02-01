@@ -16,6 +16,7 @@ import requests, json
 from flasgger import swag_from
 
 class PredictionResource(Resource):
+    
     def __init__(self):
         self.controller = PredictionController(PredictionModel())
         self.schema = PredictionSchema()
@@ -35,7 +36,6 @@ class PredictionResource(Resource):
 
         # Validate and parse the input data
         data = data = json.loads(request.data)
-        print(f"resource data--> ",data)
         try:
             data = self.schema.load(data)
             pred_datetime=data.get('pred_datetime') # expect a datatime, convert to string to prediction
@@ -44,7 +44,7 @@ class PredictionResource(Resource):
             return {'error': err.messages}, 400
 
         # Run the prediction and return the output    
-        prediction = self.controller.predict(pred_datetime=data.get('pred_datetime'), asset=data.get('asset'))
+        prediction = self.controller.predict(pred_datetime=pred_datetime, asset=asset)
         
         return make_response(jsonify({"prediction": prediction, "auth_status": "auth_response.json()"}),200)
     
