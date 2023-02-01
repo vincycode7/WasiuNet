@@ -12,6 +12,14 @@ marshmallow = "*"
 mongoengine = "*"
 flasgger = "*"
 python-dotenv = "*"
+aiohttp = "*"
+torch = "*"
+numpy = "*"
+pandas = "*"
+pytorch-lightning = "*"
+torchinfo = "*"
+ta = "*"
+redis = "*"
 
 [dev-packages]
 

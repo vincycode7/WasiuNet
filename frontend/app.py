@@ -1,8 +1,9 @@
-import os, sys, aiohttp, asyncio
+import os, sys, aiohttp, asyncio, tracemalloc
+
 import streamlit as st
 from config.config import PREDICT_ENDPOINT
 from datetime import datetime
-from aiohttp.client_exceptions import ClientConnectorError
+from aiohttp.client_exceptions import ClientConnectorError, ContentTypeError
 # from  data_eng import data_util
 
 async def get_prediction(session, input_data, auth_token=None):
@@ -14,13 +15,15 @@ async def get_prediction(session, input_data, auth_token=None):
     # :return: dict - the ML service's response
     # """
     # headers = {'Authorization': auth_token}
-    ml_data = {'input': input_data}
+    ml_data = input_data
     # async with session.post(ml_url, json=ml_data, headers=headers) as ml_response:
     try:
         async with session.post(PREDICT_ENDPOINT, json=ml_data) as ml_response:
             ml_json = await ml_response.json()
     except ClientConnectorError as e:
         return {"error":"Internal Server Error","message":f"ClientConnectorError occured, check if ml service is running. {e}"}, 500
+    except ContentTypeError as e:
+        return {"error":"Internal Server Error", "message":f"ContentTypeError occured, check if ml service is sending a valid response. {e}"}, 500
     return ml_json, 200
 
 def get_ml_prediction_streamlit(input_data):
@@ -39,7 +42,7 @@ def get_data_streamlit(canvas):
     trade_time = col[3].time_input("start safe entry search - time")
     date_time = datetime.combine(trade_date, trade_time).strftime("%Y-%m-%d-%H-%M-%S")
     col = col[4].select_slider("Auto safe trade",["Off","On"])
-    input_data = {"asset" : asset, "date_time" : date_time}
+    input_data = {"asset" : asset, "pred_datetime" : date_time}
     return input_data
 
 st.set_page_config(
@@ -56,12 +59,16 @@ st.set_page_config(
 
 input_data = get_data_streamlit(canvas=st)
 st.write("out",input_data)
+
+tracemalloc.start()
 ml_res, status = asyncio.run(get_ml_prediction_streamlit(input_data=input_data))
+tracemalloc.stop()
 
 if status!=200:
     st.error("An error occurred while connecting to the ML Predict Service Endpoint: " + str(ml_res['error']))
+    print(f"Error message: {str(ml_res['message'])}")
 else:
-    st.write(ml_res)
+    st.success(f'{ml_res}!', icon="✅")
     
 # st.write("ML_BASE_URL"+":"+"ML_PORT" + f"--> {ML_BASE_URL}:{ML_PORT}")
 
@@ -89,7 +96,6 @@ else:
 
 # if not st.checkbox("proceed"):
 #     st.stop()
-# st.success('This is a success message!', icon="✅")
 
 # with st.form("my_form"):
 #    st.write("Inside the form")
