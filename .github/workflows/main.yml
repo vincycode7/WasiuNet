@@ -1,9 +1,13 @@
 name: Build, Test and Push Microservices
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
+
 
 jobs:
   build:
