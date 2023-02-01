@@ -1,4 +1,4 @@
-import requests, json, time, sys, aiohttp, torch, cProfile, random
+import requests, json, time, sys, aiohttp, torch, cProfile, random, gc
 
 import numpy as np
 import pandas as pd
@@ -20,85 +20,6 @@ from collections import OrderedDict
 from torchinfo import summary
 from typing import Dict, Union, Any, List, Optional
 from concurrent.futures import ThreadPoolExecutor
-
-np.seterr(divide = 'ignore') 
-#TODO: Implement Base required field - This is to check the required fields to use the 
-#      methods to handle data from different data source (Done)
-
-#TODO: Implement get raw data (for historic_crypto library) (Done)
-
-#TODO: Implement convert_date_to_backend_format (Done)
-
-#TODO: Implement convert_date_from_backend_format (Done)
-
-#TODO: Implement get_available_technical_analysis_functions (Done)
-
-#TODO: Implement set_technical_analysis_for_dataloader (Done)
-
-#TODO: Implement get_current_technical_analysis_config(Done)
-
-#TODO: Re implement the convert_date format to retain seconds even if not specified. 
-#      (some times if a conversion from h:m:s to h:m is specified, the h:m is approximated, 
-#       re-implement the functions to only retain the initial value and not the approximated value) (done)
-
-#TODO: Implement add_technical_analysis (Done)
-
-#TODO: Implement process_data_raw to include technical analysis (Done)
-
-#TODO: Check the backward time stamp functionality to see that it is safely picking the back date and it is safely slicing equally (Done)
-
-#TODO: Check that final data output is correct (Done)
-
-#TODO: implement the partial standardizer (Done)
-
-# TODO: Parse data output into model to get an dynamic model and output - when data shape changes build model to automatically adjust to it (done)
-
-#TODO: Include support for slice() method (Done)
-
-#TODO: Save standardized model
-
-# TODO: Load standardized state
-# TODOL load training state
-# TODO: Save standardized state
-# TODO: Save training state
-#TODO: load standardized model if present else run the method to standardize inputs
-
-#TODO: Build the model to dynamically accept the data format input (done)
-
-# TODO: load standardized data to model
-
-# TODO: Train model
-
-#TODO: Implement __getitem__ for base data to be generally used by all other data class (Done)
-
-#TODO: Implement set_technical_analysis (Done)
-
-#TODO: Implement add_technical_analysis (Done)
-
-# TODO: make partial scaler async method, to scale faster
-
-#TODO: Implement add_custom_targets
-
-#TODO: Implement add_all_targets
-
-#TODO: Implement get one data point using project standard one data point output (for historic_crypto library)
-
-#TODO: Implement add technical analysis, implement in such a way that each technical analysis takes in
-#      period to analyse on and each technical_analysis are implemented seperatly and later passed as an argument
-#      technical_analysis method using dictionaries, so we can  dynamically add different technical analysis in 
-#      different time stamps. (for historic_crypto library) (Done)
-
-#TODO: Implement get available technical analysis to show supported technical analysis for this project. (for historic_crypto library) (Done)
-
-#TODO: Implement get targets function to include all future data point technical analysis and closing price as targets 
-#      and also include the if the trend is a negative or positive trend (for historic_crypto library) (Done)
-
-#TODO: Implement partial scaler (Done)
-
-#TODO: preload function from api (Done)
-#TODO: load from file (Done)
-#TODO: pad missing records from file result. (Not-Yet)
-
 
 np.seterr(divide = 'ignore') 
 
@@ -376,7 +297,7 @@ class HistoricalData(object):
             data.sort_index(ascending=True, inplace=True)
             # data.drop_duplicates(subset=None, keep='first', inplace=True)
             return data
-
+        
 ## Import required libraries
 from datetime import datetime
 from torch.utils.data import Dataset
@@ -448,7 +369,8 @@ class DatasetBaseBackend(Dataset):
     """
     return datetime.strptime(date, format)
 
-  def convert_date_to_backend_format(self, date, format='%Y-%m-%d-%H-%M-%S'):
+  @staticmethod
+  def convert_date_to_backend_format(date, format='%Y-%m-%d-%H-%M-%S'):
     """
       This method is used to convert date from str to the required date format 
       for the dataloader
@@ -911,11 +833,17 @@ class DatasetBaseBackend(Dataset):
       Returns:
           List : a list containing the data
       """
-      results = []
-      for idx in idxs:
-          results.append(self.async_get_data_by_idx(idx=idx, process_data=process_data,add_ta=add_ta,
-                                                  apply_nat_log=apply_nat_log, fill_na=fill_na,
-                                                  cal_pct_chg=cal_pct_chg,to_numpy=to_numpy))
+      # results = []
+      # for idx in idxs:
+      #     results.append(self.async_get_data_by_idx(idx=idx, process_data=process_data,add_ta=add_ta,
+      #                                             apply_nat_log=apply_nat_log, fill_na=fill_na,
+      #                                             cal_pct_chg=cal_pct_chg,to_numpy=to_numpy))
+      from concurrent.futures import ThreadPoolExecutor, as_completed
+      with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(self.async_get_data_by_idx, idx, process_data, add_ta, apply_nat_log, fill_na, cal_pct_chg, to_numpy) for idx in idxs]
+        results = []
+        for future in as_completed(futures):
+            results.append(future.result())
       return results
 
   def __getitem__(self,idxs):
@@ -1073,8 +1001,8 @@ class DatasetBaseBackend(Dataset):
     (asset, resolution, start_date, end_date) = (asset if asset else self.asset, resolution if resolution else self.resolution,\
     start_date if start_date else self.start_date,end_date if end_date else self.end_date)
     # print("ya",start_date,end_date)
-    start_date = self.convert_date_to_backend_format(start_date, format='%Y-%m-%d-%H-%M')
-    end_date = self.convert_date_to_backend_format(end_date, format='%Y-%m-%d-%H-%M'  )
+    start_date = DatasetBaseBackend.convert_date_to_backend_format(start_date, format='%Y-%m-%d-%H-%M')
+    end_date = DatasetBaseBackend.convert_date_to_backend_format(end_date, format='%Y-%m-%d-%H-%M'  )
 
     # print((asset, resolution, start_date, end_date))
     # print(f"self._preload_data: {self._preload_data}")
@@ -1145,7 +1073,7 @@ class DatasetBaseBackend(Dataset):
 
     #filter result to increase memory size
     idx_backwards_date, idx_end_date = self.get_preload_safe_start_end_date()
-    idx_backwards_date, idx_end_date = self.convert_date_to_backend_format(idx_backwards_date, format='%Y-%m-%d-%H-%M'), self.convert_date_to_backend_format(idx_end_date, format='%Y-%m-%d-%H-%M')
+    idx_backwards_date, idx_end_date = DatasetBaseBackend.convert_date_to_backend_format(idx_backwards_date, format='%Y-%m-%d-%H-%M'), DatasetBaseBackend.convert_date_to_backend_format(idx_end_date, format='%Y-%m-%d-%H-%M')
     self.cache = self.load_from_cache(asset=self.asset, resolution=self.resolution, start_date=idx_backwards_date, end_date=idx_end_date)
 
 
@@ -1194,4 +1122,3 @@ class historicCryptoBackend(DatasetBaseBackend):
     nest_asyncio.apply()
     raw_data = asyncio.run(HistoricalData(asset, resolution, start_date, end_date,verbose = kwarg.get('verbose', False)).retrieve_data())
     return raw_data
-

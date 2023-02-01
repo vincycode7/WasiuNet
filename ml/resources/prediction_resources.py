@@ -34,15 +34,17 @@ class PredictionResource(Resource):
         # auth_response = requests.post("http://auth-service.com/verify_token", headers={"Authorization": token})
 
         # Validate and parse the input data
-        data = data = json.loads(request.data).get('input',{})
-        print(data)
+        data = data = json.loads(request.data)
+        print(f"resource data--> ",data)
         try:
             data = self.schema.load(data)
+            pred_datetime=data.get('pred_datetime') # expect a datatime, convert to string to prediction
+            asset=data.get('asset')
         except ValidationError as err:
             return {'error': err.messages}, 400
 
         # Run the prediction and return the output    
-        prediction = self.controller.predict(datetime=data.get('datetime'), asset=data.get('asset'))
+        prediction = self.controller.predict(pred_datetime=data.get('pred_datetime'), asset=data.get('asset'))
         
         return make_response(jsonify({"prediction": prediction, "auth_status": "auth_response.json()"}),200)
     

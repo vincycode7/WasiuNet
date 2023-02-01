@@ -4,7 +4,7 @@ from datetime import datetime
 
 class PredictionModel(Document):
     asset = StringField(required=True)
-    date_time = DateTimeField(required=True)
+    pred_datetime = DateTimeField(required=True)
     prediction = StringField(required=True)
     created_at = DateTimeField(default=datetime.utcnow)
 
