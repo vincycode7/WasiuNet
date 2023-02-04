@@ -7,10 +7,10 @@ load_dotenv()
 
 import redis
 
+MODEL_MAPPING = eval(os.environ.get("MODEL_MAPPING"))
 REDIS_HOST = os.environ.get('REDIS_HOST')
 REDIS_PORT = os.environ.get('REDIS_PORT')
 REDIS_DB = os.environ.get('REDIS_DB')
-
 REDIS_DB_INST = redis.Redis(host=str(REDIS_HOST), port=int(REDIS_PORT), db=REDIS_DB)
 
 # Load secrets
