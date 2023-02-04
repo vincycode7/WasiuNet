@@ -1,5 +1,11 @@
 # WasiuNet
-A time series future asset price estimator, using multiple timeframe datapoint for future price estimation.
+Revolutionize your crypto trading experience with our custom Transformer-based microservice solution. Our innovative in-house model blends the power of CNN and Transformers, utilizing multi-timeframe trading data for thorough research and analysis. This solution is easily adaptable to various currencies and model sizes, making it a versatile tool for traders.
+
+What sets our solution apart is the unique approach to data input. By analyzing data in multiple time frames, our solution creates a sequence of data from 1 min, 5 mins, and 15 mins time frames, which is then processed by a FeedForward + CNN layer to output new height, weight, and channel data. This data is then passed through another CNN layer to produce patches that are finally fed into the Transformers for encoding and decoding.
+
+Experience the cutting-edge technology in crypto trading with our solution. It leverages the latest advancements in NLP, Deep Learning, Machine Learning, AI, Docker, Pytorch, Github, Redis, Postgresql, Python and Transformers to deliver unparalleled results. Check out our solution on GitHub: https://github.com/vincycode7/WasiuNet, and stay ahead in the race of innovation in the crypto world.
+
+This project delivers a comprehensive machine learning and data engineering solution, from end to end. It begins with input processing and continues through the training pipeline, resulting in a robust tested and validated solution. The final step is to load the solution into a user-friendly frontend, allowing for tracking of safe trading entry points. With customizable notifications, the system can alert users to safe entry points or even execute trades based on user settings. This pipeline ensures an efficient and effective approach to trading and investment.
 
 Note: Project currently in development in google colab, Follow link below to access, Also note that project on github is still in boilerplate stage, currently structuring folders to take into account microservice deployment using kubernetes, CI/CD using git actions to build and push docker-containers to dockerhub for kubernetes to pull and structuring the test for each micro service.
 
