@@ -34,57 +34,170 @@ spec:
             port: 8501
           initialDelaySeconds: 15
           periodSeconds: 20
-      # - name: ml
-      #   image: <docker_registry>/ml:latest
-      #   imagePullPolicy: Always
-      #   ports:
-      #   - containerPort: 8080
-      #   readinessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 5
-      #     periodSeconds: 10
-      #   livenessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 15
-      #     periodSeconds: 20
-      # - name: safepoint_tracker
-      #   image: <docker_registry>/safepoint_tracker:latest
-      #   imagePullPolicy: Always
-      #   ports:
-      #   - containerPort: 8080
-      #   readinessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 5
-      #     periodSeconds: 10
-      #   livenessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 15
-      #     periodSeconds: 20
-      # - name: auth
-      #   image: <docker_registry>/auth:latest
-      #   imagePullPolicy: Always
-      #   ports:
-      #   - containerPort: 8080
-      #   readinessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 5
-      #     periodSeconds: 10
-      #   livenessProbe:
-      #     httpGet:
-      #       path: /health
-      #       port: 80
-      #     initialDelaySeconds: 15
-      #     periodSeconds: 20
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-deployment
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:latest
+          ports:
+          - containerPort: 6379
+          readinessProbe:
+            exec:
+              command:
+              - redis-cli
+              - ping
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command:
+              - redis-cli
+              - ping
+            initialDelaySeconds: 15
+            periodSeconds: 10
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ml
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ml
+  template:
+    metadata:
+      labels:
+        app: ml
+    spec:
+      containers:
+      - name: ml
+        image: <docker_registry>/ml:latest
+        env:
+          - name: REDIS_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: redis-config
+                key: REDIS_HOST
+          - name: REDIS_PORT
+            valueFrom:
+              configMapKeyRef:
+                name: redis-config
+                key: REDIS_PORT
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: safepoint_tracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: safepoint_tracker
+  template:
+    metadata:
+      labels:
+        app: safepoint_tracker
+    spec:
+      containers:    
+      - name: safepoint_tracker
+        image: <docker_registry>/safepoint_tracker:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:   
+      - name: auth
+        image: <docker_registry>/auth:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 80
+          initialDelaySeconds: 15
+          periodSeconds: 20
   strategy:
     type: RollingUpdate
     rollingUpdate:

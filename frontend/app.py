@@ -70,6 +70,46 @@ if status!=200:
 else:
     st.success(f'{ml_res}!', icon="✅")
     
+    
+# import streamlit as st
+# import requests
+# import json
+# import time
+
+# async def fetch_prediction(data):
+#     url = "http://localhost:5000/predict"
+#     headers = {'content-type': 'application/json'}
+#     response = requests.post(url, data=json.dumps(data), headers=headers)
+#     return response.json()
+
+# async def fetch_result(prediction_key):
+#     url = f"http://localhost:5000/result/{prediction_key}"
+#     response = requests.get(url)
+#     return response.json()
+
+# async def main():
+#     st.title("Crypto Trading Predictions")
+#     data = {
+#         "feature1": st.number_input("Enter feature 1 value"),
+#         "feature2": st.number_input("Enter feature 2 value"),
+#         "feature3": st.number_input("Enter feature 3 value"),
+#         "feature4": st.number_input("Enter feature 4 value")
+#     }
+#     if st.button("Predict"):
+#         prediction = await fetch_prediction(data)
+#         prediction_key = prediction["prediction_key"]
+#         if "prediction" in prediction:
+#             st.write("Prediction: ", prediction["prediction"])
+#         else:
+#             result = None
+#             while not result:
+#                 result = await fetch_result(prediction_key)
+#                 time.sleep(1)
+#             st.write("Prediction: ", result["prediction"])
+
+# if __name__ == "__main__":
+#     asyncio.run(main())
+
 # st.write("ML_BASE_URL"+":"+"ML_PORT" + f"--> {ML_BASE_URL}:{ML_PORT}")
 
 # async def authenticate_user(session, username, password):
