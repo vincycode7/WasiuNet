@@ -33,7 +33,7 @@ class PredictionResource(Resource):
         self.redis_conn = redis.Redis(host='localhost', port=6379, db=0)
 
     @swag_from('../templates/predict_swagger.yml')
-    def post(self):
+    async def post(self):
         # Verify the token
         # auth_header = request.headers.get("Authorization")
         # if auth_header:
@@ -42,7 +42,7 @@ class PredictionResource(Resource):
         #     return {'error': 'Authorization header not provided'}, 401
         
         # Send the token to the auth service
-        token = request.headers.get("Authorization", None)
+        # token = request.headers.get("Authorization", None)
         # auth_response = requests.post("http://auth-service.com/verify_token", headers={"Authorization": token})
 
         # Validate and parse the input data
@@ -62,13 +62,14 @@ class PredictionResource(Resource):
             return make_response(jsonify({"prediction": result.decode(), "auth_status": "auth_response.json()"}), 200)
 
         # If the result is not in the cache, make the prediction
-        result = self.make_prediction(data, prediction_key)
+        result = await self.make_prediction(data, prediction_key)
         if result is not None:
             # Return the result
             return make_response(jsonify({"prediction": result.decode(), "auth_status": "auth_response.json()"}), 200)
         else:
             # Return a message indicating that the prediction is being processed
             return {"message": "Prediction is already being processed"}
+
 
     async def make_prediction(self, data, prediction_key, max_retries=3):
         redis_conn = redis.Redis(host='localhost', port=6379, db=0)
@@ -111,6 +112,7 @@ class PredictionResource(Resource):
             else:
                 failed_count = 1
             redis_conn.set(prediction_key + '_failed', failed_count)
+            redis_conn.set(prediction_key + '_max_failed_retries', max_retries)
 
             logging.error(f"Prediction task with key {prediction_key} failed with error {str(e)}")
             return None
@@ -143,7 +145,12 @@ class Result(Resource):
 
         # Check if the prediction failed
         failed = redis_conn.get(prediction_key + '_failed')
+        failed_max_failed_retries = redis_conn.get(prediction_key + '_max_failed_retries')
         if failed:
+            if failed_max_failed_retries and failed < failed_max_failed_retries:
+                return {"status": "failed","message": f"retrying failed job with id {prediction_key}"}
+            if failed_max_failed_retries and failed >= failed_max_failed_retries:
+                return {"status": "failed", "message": f"failed job with id {prediction_key} has failed for {failed_max_failed_retries} amount of time(s) and won't be retried."}
             return {"status": "failed"}
 
         # Return not found if the result is not available and not being processed
