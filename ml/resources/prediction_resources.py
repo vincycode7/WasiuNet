@@ -14,6 +14,7 @@ from models.prediction_model import PredictionModel
 from schemas.prediction_schema import PredictionSchema
 import requests, json
 from flasgger import swag_from
+import asyncio
 
 class PredictionResource(Resource):
     
@@ -48,6 +49,39 @@ class PredictionResource(Resource):
         
         return make_response(jsonify({"prediction": prediction, "auth_status": "auth_response.json()"}),200)
     
+# class Predict(Resource):
+#     async def post(self):
+#         data = request.get_json()
+#         redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+
+#         prediction_key = data.get('prediction_key', None)
+#         if not prediction_key:
+#             # Generate a unique prediction key
+#             prediction_key = generate_unique_key()
+
+#         # Check if the prediction result is already available in the cache
+#         result = redis_conn.get(prediction_key)
+#         if result:
+#             # Return the result from the cache
+#             return result
+
+#         # If the result is not in the cache, make the prediction asynchronously
+#         loop = asyncio.get_event_loop()
+#         task = loop.create_task(make_prediction(data, prediction_key))
+#         await task
+#         result = redis_conn.get(prediction_key)
+
+#         return {"prediction_key": prediction_key}
+
+# class Result(Resource):
+#     async def get(self, prediction_key):
+#         redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+#         result = redis_conn.get(prediction_key)
+#         if result:
+#             return {"prediction": result}
+#         else:
+#             return {"message": "Result not found"}, 404
+
 class HealthCheckResource(Resource):
     def __init__(self):
         self.controller = HealthCheckController()
