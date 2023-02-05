@@ -25,6 +25,18 @@ class PredictionModel(Document):
         return prediction
 
     def save_prediction(prediction, date, time, asset):
+        """
+            Saves a prediction of a specific asset.
+            
+            Args:
+                prediction (float): The prediction value.
+                date (datetime.date): The date the prediction was made.
+                time (datetime.time): The time the prediction was made.
+                asset (str): The asset being predicted.
+            
+            Returns:
+                pred (Prediction): The saved Prediction object.
+        """
         pred = Prediction(prediction=prediction, date=date, time=time, asset=asset)
         pred.save()
         return pred

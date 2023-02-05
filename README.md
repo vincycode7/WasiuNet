@@ -7,7 +7,7 @@ Experience the cutting-edge technology in crypto trading with our solution. It l
 
 This project delivers a comprehensive machine learning and data engineering solution, from end to end. It begins with input processing and continues through the training pipeline, resulting in a robust tested and validated solution. The final step is to load the solution into a user-friendly frontend, allowing for tracking of safe trading entry points. With customizable notifications, the system can alert users to safe entry points or even execute trades based on user settings. This pipeline ensures an efficient and effective approach to trading and investment.
 
-Note: Project currently in development in google colab, Follow link below to access, Also note that project on github is still in boilerplate stage, currently structuring folders to take into account microservice deployment using kubernetes, CI/CD using git actions to build and push docker-containers to dockerhub for kubernetes to pull and structuring the test for each micro service.
+Note: ML part of this project is currently in development in google colab, Follow link below to access, Also note that full project setup on github is in boilerplate stage and code standard formulation, currently structuring folders to take into account microservice deployment using kubernetes, CI/CD using git actions to build and push docker-containers to dockerhub for kubernetes to pull and structuring the test for each micro service.
 
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://drive.google.com/file/d/1Nm_8_5firMCZ3w-A0y-AdrE2g0VBJT4d/view?usp=sharing)
 
@@ -20,6 +20,8 @@ Note: Project currently in development in google colab, Follow link below to acc
         - [ML Tests](ml/tests)
     - [**safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.)](safepoint_tracker)
         - [Safepoint Tracker Tests](safepoint_tracker/tests)
+    - [**notification** (Acts as a form of notification system to execute trades or notify user of when a safe trading spot is found.)](safepoint_tracker)
+        - [Notification Tests](notification/tests)
     
 2. Project-Plan
     - **Init Project [done]**
