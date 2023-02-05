@@ -14,14 +14,21 @@ Note: ML part of this project is currently in development in google colab, Follo
 1. Microservices 
     - [**auth** (For signups and signins)](auth)
         - [Auth Tests](auth/tests)
+
     - [**frontend** (For visual display)](frontend)
         - [Frontend Tests](frontend/tests)
+
     - [**ml** (For model training, testing, validation and running predictions)](ml)
         - [ML Tests](ml/tests)
+
     - [**safepoint_tracker** (Acts as a form of tracker to compare previous model output, along side previous predicted safepoints to predict the new safe point.)](safepoint_tracker)
         - [Safepoint Tracker Tests](safepoint_tracker/tests)
-    - [**notification** (Acts as a form of notification system to execute trades or notify user of when a safe trading spot is found.)](safepoint_tracker)
-        - [Notification Tests](notification/tests)
+
+    - [**auto_trader** (Acts as a form of auto trading to automate safetrades and close unhealther trades.)](auto_trader)
+        - [Auto Trader Tests](auto_trader/tests)
+
+    - [**auto_notify** (Acts as a form of notification system to handle any form of notification in the entire system, notification ranging from, safe point detection, auto safe trade executed, auto unhealthy trade close, signin notification, reset password notification, forgot password notification, news notification, etc.)](auto_notify)
+        - [Auto Notify Tests](auto_notify/tests)
     
 2. Project-Plan
     - **Init Project [done]**
