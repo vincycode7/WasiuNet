@@ -64,6 +64,7 @@ tracemalloc.start()
 ml_res, status = asyncio.run(get_ml_prediction_streamlit(input_data=input_data))
 tracemalloc.stop()
 
+print(ml_res, status)
 if status!=200:
     st.error("An error occurred while connecting to the ML Predict Service Endpoint: " + str(ml_res['error']))
     print(f"Error message: {str(ml_res['message'])}")
