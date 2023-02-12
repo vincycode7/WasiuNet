@@ -27,6 +27,8 @@ from models.prediction_model import PredictionModel
 from flasgger import swag_from
 from utils.helper import hash_string
 import logging, os
+import threading, time
+import concurrent.futures
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +38,11 @@ class PredictionResource(Resource):
         self.controller = PredictionController(PredictionModel())
         self.schema = PredictionSchema()
         self.redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+        self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+
         
     def get(self, prediction_key):
-        result = asyncio.run(self.get_prediction(prediction_key))
+        result = self.get_prediction(prediction_key)
         if result.get("status") in ["success","processing"]:
             return make_response(jsonify(result), 200)
         elif result.get("status") == "failed":
@@ -46,7 +50,7 @@ class PredictionResource(Resource):
         elif result.get("status") == "not_found":
             return make_response(jsonify(result), 404)
         
-    async def get_prediction(self, prediction_key):
+    def get_prediction(self, prediction_key):
 
         # Check if the result is available in the cache
         result = self.redis_conn.get(prediction_key)
@@ -71,8 +75,12 @@ class PredictionResource(Resource):
         # Return not found if the result is not available and not being processed
         return {"status": "not_found"}
     
-    async def run_prediction_in_background(self, data, prediction_key):
-        asyncio.create_task(self.make_prediction(data, prediction_key))
+    # def run_prediction_in_background(self, data, prediction_key):
+    #     asyncio.create_task(self.make_prediction(data, prediction_key))
+    
+    def run_prediction_in_background(self, data, prediction_key):
+        # start a new thread to handle the request
+        self.thread_pool.submit(self.make_prediction, data, prediction_key)
 
     @swag_from('../templates/predict_swagger.yml')
     def post(self):
@@ -98,7 +106,8 @@ class PredictionResource(Resource):
 
         # Check if the prediction result is already available in the cache
         prediction_key = hash_string(f"prediction:{asset}:{pred_datetime}")
-        result = asyncio.run(self.get_prediction(prediction_key))
+        # result = asyncio.run(self.get_prediction(prediction_key))
+        result = self.get_prediction(prediction_key)
         
         # Return the result from the cache or is currently available in the cache running in the background
         if result.get("status") in ["success","processing"]:
@@ -106,10 +115,10 @@ class PredictionResource(Resource):
         elif result.get("status") == "failed":
             return make_response(jsonify(result), 401)
         elif result.get("status") == "not_found":     
-            asyncio.run(self.run_prediction_in_background(data, prediction_key)) # Run solution in background
+            self.run_prediction_in_background(data, prediction_key) # Run solution in background
         return make_response(jsonify({"message": "Prediction is already being processed", "prediction_key":prediction_key, "status": "running"}), 200)
             
-    async def make_prediction(self, data, prediction_key, max_retries=3):
+    def make_prediction(self, data, prediction_key, max_retries=3):
         # redis_conn = redis.Redis(host='localhost', port=6379, db=0)
 
         # Check if the result for the same prediction key is already available in the cache
@@ -164,9 +173,10 @@ class PredictionResource(Resource):
             logger.error(f"Prediction task with key {prediction_key} failed with error {str(e)}")
             
             # Delay for a bit before retrying
-            await asyncio.sleep(failed_count-1)
+            # await asyncio.sleep(failed_count-1)
+            time.sleep(failed_count**2)
             logger.error(f"awaited retry time: {failed_count}")
-            prediction = await self.make_prediction(data, prediction_key, max_retries=max_retries) # Run solution in background
+            prediction = self.make_prediction(data, prediction_key, max_retries=max_retries) # Run solution in background
                 
             return None
 
