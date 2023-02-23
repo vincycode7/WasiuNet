@@ -26,6 +26,7 @@ from schemas.prediction_schema import PredictionSchema
 from models.prediction_model import PredictionModel
 from flasgger import swag_from
 from utils.helper import hash_string
+from configs.config import REDIS_DB_INST
 import logging, os
 import threading, time
 import concurrent.futures
@@ -37,7 +38,7 @@ class PredictionResource(Resource):
     def __init__(self):
         self.controller = PredictionController(PredictionModel())
         self.schema = PredictionSchema()
-        self.redis_conn = redis.Redis(host='localhost', port=6379, db=0)
+        self.redis_conn = REDIS_DB_INST.redis_connection
         self.thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
         
@@ -75,9 +76,6 @@ class PredictionResource(Resource):
         # Return not found if the result is not available and not being processed
         return {"status": "not_found"}
     
-    # def run_prediction_in_background(self, data, prediction_key):
-    #     asyncio.create_task(self.make_prediction(data, prediction_key))
-    
     def run_prediction_in_background(self, data, prediction_key):
         # start a new thread to handle the request
         self.thread_pool.submit(self.make_prediction, data, prediction_key)
@@ -106,7 +104,6 @@ class PredictionResource(Resource):
 
         # Check if the prediction result is already available in the cache
         prediction_key = hash_string(f"prediction:{asset}:{pred_datetime}")
-        # result = asyncio.run(self.get_prediction(prediction_key))
         result = self.get_prediction(prediction_key)
         
         # Return the result from the cache or is currently available in the cache running in the background
@@ -129,7 +126,6 @@ class PredictionResource(Resource):
 
         # Check if the same prediction key is being processed by another task
         lock = self.redis_conn.get(prediction_key + '_lock')
-        print(f"\n\nHere is the lock for the prediction: {lock} \n\n")
         if lock:
             # Return None to indicate that the task is already in progress
             return None

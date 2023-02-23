@@ -20,6 +20,8 @@ pytorch-lightning = "*"
 torchinfo = "*"
 ta = "*"
 redis = "*"
+nest-asyncio = "*"
+gdown = "*"
 
 [dev-packages]
 
