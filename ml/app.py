@@ -1,7 +1,7 @@
 from flask import Flask
 from flasgger import Swagger
 from blueprints.predict_blueprint import pred_bp
-from configs.config import PORT, DEBUG, REDIS_DB, REDIS_HOST, REDIS_PORT,REDIS_PASSWD, RedisConfig
+from configs.config import PORT, DEBUG
 import logging
 
 app = Flask(__name__)

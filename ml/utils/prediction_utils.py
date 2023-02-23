@@ -5,23 +5,11 @@ from functools import wraps
 from hashlib import sha256
 import pickle
 import torch
+from .model import wasiunet_model_cache
+import logging, os
+import gdown
 
-def wasiunet_model_cache(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # Create a unique key based on the arguments
-        key = sha256(str((func.__name__, args, kwargs)).encode()).hexdigest()
-        # Check if the result is already in cache
-        result = REDIS_DB_INST.get(key)
-        if result:
-            # If yes, return the result
-            return pickle.loads(result)
-        else:
-            # If not, call the function, cache the result and return it
-            result = func(*args, **kwargs)
-            REDIS_DB_INST.set(key, pickle.dumps(result))
-            return result
-    return wrapper
+logger = logging.getLogger(__name__)
 
 def load_wasiunet_data(asset, pred_datetime):
     assert type(pred_datetime) != type(None), "pred_datetime is not expected to be 'None' please fill in the correct value."
@@ -78,10 +66,12 @@ def load_wasiunet_data(asset, pred_datetime):
     dataframe_inst =  historicCryptoBackend(start_date=start_date, end_date=end_date, asset=asset, resolution=resolution,technical_analysis_config=ta_config,fea_output_per_data_slice=fea_output_per_data_slice, fea_data_slice=fea_data_slice,glob_time_step_forwards=glob_time_step_forwards, verbose=True)
     return dataframe_inst
 
-@wasiunet_model_cache
+# @wasiunet_model_cache
 def load_wasiunet_model(*args, **kwargs):
     # Code to load the model using the passed arguments
     # Wasiu Model (TODO: implement check for all the arguments and throw exception)
+    logger.info(f"args, kwargs {args} {kwargs}")
+    
     asset = kwargs.get('asset',"BTC-USD")
     resolution = kwargs.get('resolution',60)
     fea_output_per_data_slice = kwargs.get('fea_output_per_data_slice',120)
@@ -89,11 +79,11 @@ def load_wasiunet_model(*args, **kwargs):
     glob_time_step_forwards= kwargs.get('glob_time_step_forwards',180)
     batch_size = kwargs.get('batch_size',1)
     num_worker = kwargs.get('num_worker',2)
-    model_url = kwargs.get('model_url', "https://drive.google.com/drive/u/0/folders/<file_id>")
-    
-    model_name = kwargs.get('model_name',"wasiunet_model")
+    model_name = kwargs.get('model_name',"DEFAULT_MODEL_URL")
+    model_url = MODEL_MAPPING.get(model_name)
+    model_ext = kwargs.get('ext',".ckpt")
     model_path = kwargs.get('model_path',"models/wasiunet_model")
-    model_url = MODEL_MAPPING.get(model_name, None)
+    full_model_path = model_path+"/"+model_name+model_ext
     enforce_cpu_use = kwargs.get('enforce_cpu_use', True)
     
     if enforce_cpu_use:
@@ -108,11 +98,11 @@ def load_wasiunet_model(*args, **kwargs):
     space_seq_len = kwargs.get("fea_output_per_data_slice",120) #X.shape[-2]
     expand_HW = kwargs.get("expand_HW", 120) #240 #120 #
     inp_feat = kwargs.get("X_input_feat", ) #X.shape[-1]
-    out_feat = kwargs.get("Y_output_feaat", ) #Y.shape[-1]
+    out_feat = kwargs.get("Y_output_feat", ) #Y.shape[-1]
     nhead = kwargs.get("nhead",12) #9 #15 #12
     num_encoder_layers = kwargs.get("num_encoder_layers",2) #2 #2 #12 # This is the num of Encoder transformers
     num_decoder_layers = kwargs.get("num_decoder_layers", 2) #2 #2 #12 # This is the num of Decoder transformers
-    dim_feedforward = kwargs.get("dim_feedforward",1026) #2052 #3072 #1026 # # This is the num of feed forward output from the encoder decoder network
+    dim_feedforward = kwargs.get("dim_feedforward",2052) #2052 #3072 #1026 # # This is the num of feed forward output from the encoder decoder network
     dropout = kwargs.get("dropout", 0.1)
     max_len = fea_output_per_data_slice * fea_data_slice # 120 * 12
     trans_activation = kwargs.get("trans_activation","gelu")
@@ -122,37 +112,43 @@ def load_wasiunet_model(*args, **kwargs):
     
     try:
         if not os.path.exists(model_path):
-            print("Downloading model...")
+            logger.info(f"Creating directory {model_path}")
+            os.makedirs(model_path)
+        if not os.path.isfile(model_path):
+            logger.info(f"Downloading model... {model_url}")
             if model_url is None:
-                raise Exception("Model not found")
+                raise Exception("URL not found")
             else:
-                gdown.download(model_url, model_path, quiet=False)
-    except Exception as e:
-        print(e)
-        raise Exception(f"Model not found: {e}" % model_path)
-    else:
-        wasiunet_model = WasiuNet(embedding_dim=embedding_dim, inp_feat=inp_feat, out_feat=out_feat, 
-                        in_channels = in_channels, patch_size=patch_size,space_seq_len=space_seq_len,expand_HW=expand_HW,
-                        nhead=nhead, num_encoder_layers=num_encoder_layers, 
-                        num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward, 
-                        dropout=dropout, max_len=max_len, device=device, trans_activation=trans_activation,
-                        trans_norm_first=trans_norm_first,trans_batch_first=trans_batch_first,
-                        feat_map_dict=feat_map_dict
-                        ).to(device)
-
-        # Wasiu Model Attached to a Pytorch Lightening Trainer
-        wasiunet_model_trainer = WasiuNetTrainer(model=wasiunet_model, lr=learning_rate).to(device)
-        
-        try:
-            print(f"Loading... File path: {model_path}")
-            wasiunet_model_trainer = wasiunet_model_trainer.load_from_checkpoint(model_path,model=wasiunet_model)
-        except Exception as e:
-            print(f"Error {e} occured while loading model checkpoint")
-            return None
+                gdown.download(model_url, full_model_path, quiet=False)
         else:
-            print("Model loaded successfully.")
+            logger.info(f"Model found at {model_path}. Skipping download.")
+    except Exception as e:
+        err_msg = f"Error {e} while loading model from path {full_model_path}"
+        logger.error(err_msg)
+        raise Exception(err_msg)
+    # else:
+    #     wasiunet_model = WasiuNet(embedding_dim=embedding_dim, inp_feat=inp_feat, out_feat=out_feat, 
+    #                     in_channels = in_channels, patch_size=patch_size,space_seq_len=space_seq_len,expand_HW=expand_HW,
+    #                     nhead=nhead, num_encoder_layers=num_encoder_layers, 
+    #                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward, 
+    #                     dropout=dropout, max_len=max_len, device=device, trans_activation=trans_activation,
+    #                     trans_norm_first=trans_norm_first,trans_batch_first=trans_batch_first,
+    #                     feat_map_dict=feat_map_dict
+    #                     ).to(device)
 
-    return wasiunet_model_trainer
+    #     # Wasiu Model Attached to a Pytorch Lightening Trainer
+    #     wasiunet_model_trainer = WasiuNetTrainer(model=wasiunet_model, lr=learning_rate).to(device)
+        
+    #     try:
+    #         print(f"Loading... File path: {model_path}")
+    #         wasiunet_model_trainer = wasiunet_model_trainer.load_from_checkpoint(model_path,model=wasiunet_model)
+    #     except Exception as e:
+    #         print(f"Error {e} occured while loading model checkpoint")
+    #         return None
+    #     else:
+    #         print("Model loaded successfully.")
+
+    # return wasiunet_model_trainer
  
 
 def run_prediction(wasiunet_dataframe, wasiunet_model_trainer):

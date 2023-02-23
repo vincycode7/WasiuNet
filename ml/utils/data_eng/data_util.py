@@ -20,6 +20,7 @@ from collections import OrderedDict
 from torchinfo import summary
 from typing import Dict, Union, Any, List, Optional
 from concurrent.futures import ThreadPoolExecutor
+import nest_asyncio
 
 np.seterr(divide = 'ignore') 
 
@@ -265,7 +266,7 @@ class HistoricalData(object):
         else:
             # The api limit:
             max_per_mssg = 300
-            data = pd.DataFrame()
+            data = pd.DataFrame([])
             chunk_size = 5
             total_idx = int(request_volume / max_per_mssg) + 1
             all_idx = list(range(total_idx))
@@ -285,7 +286,8 @@ class HistoricalData(object):
 
               for dataset in results:
                   if not dataset.empty:
-                    data = data.append(dataset)
+                    data = pd.concat([data,dataset], axis=0)
+                    
               time.sleep(randint(0, 2))
             # print(f"data --> {data}")
             data.columns = ["time", "low", "high", "open", "close", "volume"]
@@ -854,8 +856,8 @@ class DatasetBaseBackend(Dataset):
       Assuming all data points starting from the start date to the end date were 
       available, this method selects the nth row from the full data set.
     """
-    import nest_asyncio
-    nest_asyncio.apply()
+    # import nest_asyncio
+    # nest_asyncio.apply()
     # print(f"Checking slice: {idxs}")
     if isinstance(idxs, list):  
       pass
@@ -1118,7 +1120,11 @@ class historicCryptoBackend(DatasetBaseBackend):
     super().__init__(**kwarg)
 
   def load_from_api(self, asset, resolution, start_date, end_date,**kwarg):
-    import nest_asyncio
-    nest_asyncio.apply()
-    raw_data = asyncio.run(HistoricalData(asset, resolution, start_date, end_date,verbose = kwarg.get('verbose', False)).retrieve_data())
+    
+    # import nest_asyncio
+    # nest_asyncio.apply()
+    print(f"starting load: {asset}, {start_date}, {end_date}")
+    loop = asyncio.new_event_loop()
+    raw_data = loop.run_until_complete(HistoricalData(asset, resolution, start_date, end_date,verbose = kwarg.get('verbose', False)).retrieve_data())
+    
     return raw_data

@@ -10,7 +10,10 @@ class PredictionController:
     
     @swag_from("template/predict_swagger.yml")
     def predict(self, pred_datetime, asset):
-        return self.model.run_prediction(pred_datetime, asset)
+        try:
+            return self.model.run_prediction(pred_datetime, asset)
+        except Exception as e:
+            raise ValueError(f"Could not predict because of exception {e} in predict controller.")
     
 class HealthCheckController(Resource):
     @swag_from("template/healthcheck_swagger.yml")

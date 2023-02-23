@@ -10,6 +10,7 @@ import torch.nn.functional as F
 from datetime import datetime, timedelta
 from torch.utils.data import random_split
 from ast import Return
+import pytorch_lightning as pl
 from pytorch_lightning.utilities.model_summary import ModelSummary
 from torchmetrics.functional.classification import multiclass_f1_score, multiclass_accuracy, multiclass_precision, multiclass_recall
 from torch.utils.data import DataLoader
@@ -17,11 +18,31 @@ from datetime import datetime
 from random import randint
 from collections import OrderedDict
 from torchinfo import summary
+import pickle
+from hashlib import sha256
+from configs.config import REDIS_DB_INST
 
 np.seterr(divide = 'ignore') 
 
 import functools
 
+def wasiunet_model_cache(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Create a unique key based on the arguments
+        key = sha256(str((func.__name__, args, kwargs)).encode()).hexdigest()
+        # Check if the result is already in cache
+        result = REDIS_DB_INST.redis_connection.get(key)
+        if result:
+            # If yes, return the result
+            return pickle.loads(result)
+        else:
+            # If not, call the function, cache the result and return it
+            result = func(*args, **kwargs)
+            REDIS_DB_INST.redis_connection.set(key, pickle.dumps(result))
+            return result
+    return wrapper
+  
 def wasiu_input_check(class_level):
     """
         param: classtype: this is the expected classes to check if input aligns 
