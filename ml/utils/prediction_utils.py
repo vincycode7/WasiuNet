@@ -5,7 +5,7 @@ from functools import wraps
 from hashlib import sha256
 import pickle
 import torch
-from .model import wasiunet_model_cache
+from .model import WasiuNetTrainer
 import logging, os
 import gdown
 
@@ -67,10 +67,10 @@ def load_wasiunet_data(asset, pred_datetime):
     return dataframe_inst
 
 # @wasiunet_model_cache
-def load_wasiunet_model(*args, **kwargs):
+def load_wasiunet_model(model_name, **kwargs):
     # Code to load the model using the passed arguments
     # Wasiu Model (TODO: implement check for all the arguments and throw exception)
-    logger.info(f"args, kwargs {args} {kwargs}")
+    logger.info(f"kwargs {kwargs}")
     
     asset = kwargs.get('asset',"BTC-USD")
     resolution = kwargs.get('resolution',60)
@@ -79,10 +79,11 @@ def load_wasiunet_model(*args, **kwargs):
     glob_time_step_forwards= kwargs.get('glob_time_step_forwards',180)
     batch_size = kwargs.get('batch_size',1)
     num_worker = kwargs.get('num_worker',2)
-    model_name = kwargs.get('model_name',"DEFAULT_MODEL_URL")
+    # model_name = kwargs.get('model_name',"DEFAULT_MODEL_URL")
+    # print(f"MODEL_MAPPING: {MODEL_MAPPING}")
     model_url = MODEL_MAPPING.get(model_name)
     model_ext = kwargs.get('ext',".ckpt")
-    model_path = kwargs.get('model_path',"models/wasiunet_model")
+    model_path = kwargs.get('model_path',"model_checkpoints/wasiunet_model")
     full_model_path = model_path+"/"+model_name+model_ext
     enforce_cpu_use = kwargs.get('enforce_cpu_use', True)
     
@@ -91,30 +92,13 @@ def load_wasiunet_model(*args, **kwargs):
     else:
         device_name = "cuda" if torch.cuda.is_available() else "cpu"
         
-    device = torch.device(device_name)
-    embedding_dim = kwargs.get("embedding_dim",120) #240 #765 #120 # This is the num of input features expected into encoder and decoder.
-    patch_size = kwargs.get("patch_size",16)
-    in_channels = kwargs.get("fea_data_slice",12)#X.shape[-3] # num of timeframe : 12
-    space_seq_len = kwargs.get("fea_output_per_data_slice",120) #X.shape[-2]
-    expand_HW = kwargs.get("expand_HW", 120) #240 #120 #
-    inp_feat = kwargs.get("X_input_feat", ) #X.shape[-1]
-    out_feat = kwargs.get("Y_output_feat", ) #Y.shape[-1]
-    nhead = kwargs.get("nhead",12) #9 #15 #12
-    num_encoder_layers = kwargs.get("num_encoder_layers",2) #2 #2 #12 # This is the num of Encoder transformers
-    num_decoder_layers = kwargs.get("num_decoder_layers", 2) #2 #2 #12 # This is the num of Decoder transformers
-    dim_feedforward = kwargs.get("dim_feedforward",2052) #2052 #3072 #1026 # # This is the num of feed forward output from the encoder decoder network
-    dropout = kwargs.get("dropout", 0.1)
-    max_len = fea_output_per_data_slice * fea_data_slice # 120 * 12
-    trans_activation = kwargs.get("trans_activation","gelu")
-    trans_norm_first = kwargs.get("trans_norm_first",False)
-    trans_batch_first = kwargs.get("trans_batch_first",True)
-    feat_map_dict = kwargs.get("feat_map_dict",None) #btc_usd_train.return_all_output_col_as_dict()
-    
+    # device = torch.device(device_name)
+
     try:
         if not os.path.exists(model_path):
             logger.info(f"Creating directory {model_path}")
             os.makedirs(model_path)
-        if not os.path.isfile(model_path):
+        if not os.path.isfile(full_model_path):
             logger.info(f"Downloading model... {model_url}")
             if model_url is None:
                 raise Exception("URL not found")
@@ -122,19 +106,20 @@ def load_wasiunet_model(*args, **kwargs):
                 gdown.download(model_url, full_model_path, quiet=False)
         else:
             logger.info(f"Model found at {model_path}. Skipping download.")
+            # print(f"Model found at {model_path}. Skipping download.")
     except Exception as e:
         err_msg = f"Error {e} while loading model from path {full_model_path}"
         logger.error(err_msg)
         raise Exception(err_msg)
-    # else:
-    #     wasiunet_model = WasiuNet(embedding_dim=embedding_dim, inp_feat=inp_feat, out_feat=out_feat, 
-    #                     in_channels = in_channels, patch_size=patch_size,space_seq_len=space_seq_len,expand_HW=expand_HW,
-    #                     nhead=nhead, num_encoder_layers=num_encoder_layers, 
-    #                     num_decoder_layers=num_decoder_layers, dim_feedforward=dim_feedforward, 
-    #                     dropout=dropout, max_len=max_len, device=device, trans_activation=trans_activation,
-    #                     trans_norm_first=trans_norm_first,trans_batch_first=trans_batch_first,
-    #                     feat_map_dict=feat_map_dict
-    #                     ).to(device)
+    else:
+        try:
+            print(f"Loading... File path: {full_model_path}")
+            wasiunet_model_trainer = WasiuNetTrainer.load_from_checkpoint(full_model_path,device_name=device_name)
+        except Exception as e:
+            err = f"Error {e} occured while loading model checkpoint: {full_model_path}"
+            raise ValueError(err)
+        else:
+            print("Model loaded successfully.")
 
     #     # Wasiu Model Attached to a Pytorch Lightening Trainer
     #     wasiunet_model_trainer = WasiuNetTrainer(model=wasiunet_model, lr=learning_rate).to(device)

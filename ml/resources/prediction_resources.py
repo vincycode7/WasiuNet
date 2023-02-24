@@ -21,7 +21,7 @@ import redis
 from flask import request, make_response, jsonify
 from flask_restful import Resource
 from marshmallow import ValidationError
-from controllers.prediction_controller import PredictionController
+from controllers.prediction_controller import PredictionController, HealthCheckController
 from schemas.prediction_schema import PredictionSchema
 from models.prediction_model import PredictionModel
 from flasgger import swag_from
