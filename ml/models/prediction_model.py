@@ -11,14 +11,15 @@ class PredictionModel(Document):
 
     meta = {'collection': 'predictions'}
     
-    def run_prediction(self,pred_datetime, asset):
+    def run_prediction(self,pred_datetime, asset,model_name="DEFAULT_MODEL_URL"):
         try:
             # Load wasiunet data obj
             dataframe_inst = load_wasiunet_data(asset=asset, pred_datetime=pred_datetime) 
-            dataframe_1 = dataframe_inst[0]
-            logger.info(f"dataframe_1 = {dataframe_1}\n\n")
+            feat_map_dict = dataframe_inst.return_all_output_col_as_dict()
+            # dataframe_1 = dataframe_inst[0]
+            # logger.info(f"dataframe_1 = {dataframe_1}\n\n")
             # Load wasiunet model
-            wasiunet_model_trainer = load_wasiunet_model()
+            wasiunet_model_trainer = load_wasiunet_model(model_name)
             
             # if wasiunet_model_trainer == None:
             #     raise Exception("Could not load wasiunet model")

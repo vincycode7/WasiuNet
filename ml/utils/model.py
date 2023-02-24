@@ -1,5 +1,4 @@
-import requests, json, time, sys, aiohttp, torch, functools
-
+import requests, json, time, sys, aiohttp, torch, functools, cProfile, random, gc
 import numpy as np
 import pandas as pd
 import torch.nn as nn
@@ -26,23 +25,8 @@ np.seterr(divide = 'ignore')
 
 import functools
 
-def wasiunet_model_cache(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        # Create a unique key based on the arguments
-        key = sha256(str((func.__name__, args, kwargs)).encode()).hexdigest()
-        # Check if the result is already in cache
-        result = REDIS_DB_INST.redis_connection.get(key)
-        if result:
-            # If yes, return the result
-            return pickle.loads(result)
-        else:
-            # If not, call the function, cache the result and return it
-            result = func(*args, **kwargs)
-            REDIS_DB_INST.redis_connection.set(key, pickle.dumps(result))
-            return result
-    return wrapper
-  
+import functools
+
 def wasiu_input_check(class_level):
     """
         param: classtype: this is the expected classes to check if input aligns 
@@ -370,16 +354,161 @@ class WasiuNet(nn.Module):
         return out
 
 class WasiuNetTrainer(pl.LightningModule):
-    def __init__(self, model, lr=0.003, multi_label_loss_weight = 0.5, regression_loss_weight = 0.5):
+    def __init__(self, **kwargs):
+        """
+        Initializes the WasiuNetTrainer module with the following arguments:
+        - embedding_dim (int): dimension of the token embeddings
+        - inp_feat (int): number of input features
+        - out_feat (int): number of output features
+        - in_channels (int): number of input channels
+        - patch_size (int): size of each patch
+        - space_seq_len (int): sequence length of space encoding
+        - expand_HW (int): expansion factor for H and W dimensions
+        - nhead (int): number of attention heads
+        - num_encoder_layers (int): number of transformer encoder layers
+        - num_decoder_layers (int): number of transformer decoder layers
+        - dim_feedforward (int): dimension of the feedforward network
+        - dropout (float): dropout rate
+        - max_len (int): maximum sequence length
+        - device (str): device to use for training
+        - trans_activation (str): activation function for transformer layers
+        - trans_norm_first (bool): whether to apply layer normalization before or after the attention layer in transformers
+        - trans_batch_first (bool): whether batch is the first dimension in transformers
+        - feat_map_dict (dict): dictionary containing the mapping of feature names to indices
+        - lr (float): learning rate (default=0.003)
+        - multi_label_loss_weight (float): weight for multi-label loss (default=0.5)
+        - regression_loss_weight (float): weight for regression loss (default=0.5)
+        """
         super(WasiuNetTrainer, self).__init__()
-        self.model = model
-        self.lr = lr
+        if kwargs:
+          self.save_hyperparameters()
+          for arg, value in kwargs.items():
+              if arg == 'embedding_dim':
+                  if not isinstance(value, int):
+                      raise TypeError(f"embedding_dim should be of type int, not {type(value)}.")
+                  self.embedding_dim = value
+                  
+              elif arg == 'inp_feat':
+                  if not isinstance(value, int):
+                      raise TypeError(f"inp_feat should be of type int, not {type(value)}.")
+                  self.inp_feat = value
+                  
+              elif arg == 'out_feat':
+                  if not isinstance(value, int):
+                      raise TypeError(f"out_feat should be of type int, not {type(value)}.")
+                  self.out_feat = value
+                  
+              elif arg == 'in_channels':
+                  if not isinstance(value, int):
+                      raise TypeError(f"in_channels should be of type int, not {type(value)}.")
+                  self.in_channels = value
+                  
+              elif arg == 'patch_size':
+                  if not isinstance(value, int):
+                      raise TypeError(f"patch_size should be of type int, not {type(value)}.")
+                  self.patch_size = value
+                  
+              elif arg == 'space_seq_len':
+                  if not isinstance(value, int):
+                      raise TypeError(f"space_seq_len should be of type int, not {type(value)}.")
+                  self.space_seq_len = value
+                  
+              elif arg == 'expand_HW':
+                  if not isinstance(value, int):
+                      raise TypeError(f"expand_HW should be of type int, not {type(value)}.")
+                  self.expand_HW = value
+                  
+              elif arg == 'nhead':
+                  if not isinstance(value, int):
+                      raise TypeError(f"nhead should be of type int, not {type(value)}.")
+                  self.nhead = value
+                  
+              elif arg == 'num_encoder_layers':
+                  if not isinstance(value, int):
+                      raise TypeError(f"num_encoder_layers should be of type int, not {type(value)}.")
+                  self.num_encoder_layers = value
 
-        # Define a weight for the multi-label loss (you can adjust this to balance the two losses)
-        self.multi_label_loss_weight = multi_label_loss_weight
+              elif arg == 'num_decoder_layers':
+                  if not isinstance(value, int):
+                      raise TypeError(f"num_decoder_layers should be of type int, not {type(value)}.")
+                  self.num_decoder_layers = value
 
-        # Define a weight for the regression loss (you can adjust this to balance the two losses)
-        self.regression_loss_weight = regression_loss_weight
+              elif arg == 'dim_feedforward':
+                  if not isinstance(value, int):
+                      raise TypeError(f"dim_feedforward should be of type int, not {type(value)}.")
+                  self.dim_feedforward = value
+
+              elif arg == 'dropout':
+                  if not isinstance(value, float):
+                      raise TypeError(f"dropout should be of type float, not {type(value)}.")
+                  self.dropout = value
+
+              elif arg == 'max_len':
+                  if not isinstance(value, int):
+                      raise TypeError(f"max_len should be of type int, not {type(value)}.")
+                  self.max_len = value
+
+              elif arg == 'device_name':
+                  if not isinstance(value, str):
+                      raise TypeError(f"device should be of type str, not {type(value)}.")
+                  self.device_name = value
+                  
+                  if self.device_name not in ["cuda", "cpu"]:
+                    self.device_name = "cuda" if torch.cuda.is_available() else "cpu"
+                  
+                  self.device_name = torch.device(self.device_name)
+
+              elif arg == 'trans_activation':
+                  if not isinstance(value, str):
+                      raise TypeError(f"trans_activation should be of type str, not {type(value)}.")
+                  self.trans_activation = value
+
+              elif arg == 'trans_norm_first':
+                  if not isinstance(value, bool):
+                      raise TypeError(f"trans_norm_first should be of type bool, not {type(value)}.")
+                  self.trans_norm_first = value
+
+              elif arg == 'trans_batch_first':
+                  if not isinstance(value, bool):
+                      raise TypeError(f"trans_batch_first should be of type bool, not {type(value)}.")
+                  self.trans_batch_first = value
+
+              elif arg == 'feat_map_dict':
+                  if not isinstance(value, dict):
+                      raise TypeError(f"feat_map_dict should be of type dict, not {type(value)}.")
+                  self.feat_map_dict = value
+                      
+          lr = kwargs.get('lr', 0.003)
+          if not isinstance(lr, float):
+                      raise TypeError(f"lr should be of type float, not {type(lr)}.")
+
+          multi_label_loss_weight = kwargs.get('multi_label_loss_weight', 0.5)
+          if not isinstance(multi_label_loss_weight, float):
+                      raise TypeError(f"multi_label_loss_weight should be of type float, not {type(multi_label_loss_weight)}.")
+
+          regression_loss_weight = kwargs.get('regression_loss_weight', 0.5)
+          if not isinstance(regression_loss_weight, float):
+                      raise TypeError(f"dropout should be of type float, not {type(regression_loss_weight)}.")
+
+          self.lr = lr
+          
+          # Define a weight for the multi-label loss (you can adjust this to balance the two losses)
+          self.multi_label_loss_weight = multi_label_loss_weight
+
+          # Define a weight for the regression loss (you can adjust this to balance the two losses)
+          self.regression_loss_weight = regression_loss_weight
+
+          # Wasiu Model
+          self.model = WasiuNet(embedding_dim=self.embedding_dim, inp_feat=self.inp_feat, out_feat=self.out_feat, 
+                  in_channels = self.in_channels, patch_size=self.patch_size,space_seq_len=self.space_seq_len,expand_HW=self.expand_HW,
+                  nhead=self.nhead, num_encoder_layers=self.num_encoder_layers, 
+                  num_decoder_layers=self.num_decoder_layers, dim_feedforward=self.dim_feedforward, 
+                  dropout=self.dropout, max_len=self.max_len, device=self.device_name, trans_activation=self.trans_activation,
+                  trans_norm_first=self.trans_norm_first,trans_batch_first=self.trans_batch_first,
+                  feat_map_dict=self.feat_map_dict
+                  ).to(self.device_name)
+        else:
+          self.save_hyperparameters()
 
     def forward(self, src, trg): 
         return self.model(src, trg)
@@ -478,3 +607,7 @@ class WasiuNetTrainer(pl.LightningModule):
 
         output = self.model(x, y[:,:-1,:])
         return output
+  
+    def on_global_step_end(self, trainer, pl_module):
+        torch.cuda.empty_cache()  # free GPU memory, Might make training slower
+        gc.collect() # free Ram, Might make training slower
